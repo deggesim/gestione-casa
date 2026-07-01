@@ -30,6 +30,7 @@ export const seedFixtures = async () => {
   `);
 };
 
-if (process.env.DATABASE_URL) {
-  await db.execute(ddl);
-}
+// bun preloads this file for every `bun test` run. env.ts already throws if
+// DATABASE_URL is unset (eager `required()`), so the DDL runs unconditionally
+// here — it is idempotent (CREATE ... IF NOT EXISTS).
+await db.execute(ddl);
