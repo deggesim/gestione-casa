@@ -1,0 +1,14 @@
+{
+  "name": "gestione-casa",
+  "private": true,
+  "workspaces": ["apps/*", "packages/*"],
+  "scripts": {
+    "typecheck": "bun run --filter '*' typecheck",
+    "test": "bun test",
+    "lint": "prettier --check ."
+  },
+  "devDependencies": {
+    "prettier": "^3.5.3",
+    "typescript": "^5.8.2"
+  }
+}
