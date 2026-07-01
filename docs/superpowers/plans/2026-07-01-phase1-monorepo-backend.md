@@ -564,7 +564,7 @@ export const resetDb = async () => {
 // Deterministic fixtures used by characterization tests.
 export const seedFixtures = async () => {
   await db.execute(sql`
-    INSERT INTO gc.tipo_spesa (id, descrizione) OVERRIDING SYSTEM VALUE VALUES
+    INSERT INTO gc.tipo_spesa (id, descrizione) VALUES
       (1,'spesa'),(2,'carburante'),(3,'bolletta'),(7,'casa');
     INSERT INTO gc.andamento (giorno, descrizione, costo, tipo_spesa_id) VALUES
       ('2025-01-10','spesa gen',100,1),
@@ -575,9 +575,10 @@ export const seedFixtures = async () => {
   `);
 };
 
-if (process.env.DATABASE_URL) {
-  await db.execute(ddl);
-}
+// bun preloads this file for every `bun test` run. env.ts already throws if
+// DATABASE_URL is unset (eager `required()`), so the DDL runs unconditionally
+// here — it is idempotent (CREATE ... IF NOT EXISTS).
+await db.execute(ddl);
 ```
 
 - [ ] **Step 5: Register the test preload in `bunfig.toml`** (now that `setup.ts` exists)
