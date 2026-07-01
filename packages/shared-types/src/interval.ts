@@ -6,10 +6,6 @@ export enum Interval {
   tutto = 'A',
 }
 
-export const IntervalSchema = Type.Union([
-  Type.Literal('M'),
-  Type.Literal('Y'),
-  Type.Literal('A'),
-]);
+export const IntervalSchema = Type.Union([Type.Literal('M'), Type.Literal('Y'), Type.Literal('A')]);
 
 export type IntervalValue = Static<typeof IntervalSchema>;

@@ -13,7 +13,9 @@ const ddl = sql`
 `;
 
 export const resetDb = async () => {
-  await db.execute(sql`TRUNCATE gc.token, gc.andamento, gc.utente, gc.tipo_spesa RESTART IDENTITY CASCADE`);
+  await db.execute(
+    sql`TRUNCATE gc.token, gc.andamento, gc.utente, gc.tipo_spesa RESTART IDENTITY CASCADE`,
+  );
 };
 
 // Deterministic fixtures used by characterization tests.

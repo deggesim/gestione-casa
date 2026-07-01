@@ -3,9 +3,15 @@ import { Elysia } from 'elysia';
 import { withErrorHandling, BadRequestError, NotFoundError, AuthError } from '../src/errors';
 
 const app = withErrorHandling(new Elysia())
-  .get('/bad', () => { throw new BadRequestError('bad'); })
-  .get('/missing', () => { throw new NotFoundError('missing'); })
-  .get('/nope', () => { throw new AuthError('nope'); });
+  .get('/bad', () => {
+    throw new BadRequestError('bad');
+  })
+  .get('/missing', () => {
+    throw new NotFoundError('missing');
+  })
+  .get('/nope', () => {
+    throw new AuthError('nope');
+  });
 
 test('BadRequestError → 400', async () => {
   const res = await app.handle(new Request('http://localhost/bad'));
