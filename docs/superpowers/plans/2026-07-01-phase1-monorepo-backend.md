@@ -977,6 +977,11 @@ export const createAndamentoService = (repo: ReturnType<typeof createAndamentoRe
   update: async (input: AndamentoInput) => {
     if (input.id == null || !(await repo.findById(input.id)))
       throw new BadRequestError(`Andamento ${input.id} not found`);
+    // Parity with the original server: update also validates the referenced
+    // tipoSpesa (both create and update route through the same check there),
+    // so a bad FK returns 400 rather than hitting the DB constraint (500).
+    if (!(await repo.tipoSpesaExists(input.tipoSpesa.id)))
+      throw new BadRequestError(`TipoSpesa ${input.tipoSpesa.id} not found`);
     await repo.update(input);
     return repo.findById(input.id);
   },
