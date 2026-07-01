@@ -18,6 +18,8 @@ export const createAndamentoService = (repo: ReturnType<typeof createAndamentoRe
   update: async (input: AndamentoInput) => {
     if (input.id == null || !(await repo.findById(input.id)))
       throw new BadRequestError(`Andamento ${input.id} not found`);
+    if (!(await repo.tipoSpesaExists(input.tipoSpesa.id)))
+      throw new BadRequestError(`TipoSpesa ${input.tipoSpesa.id} not found`);
     await repo.update(input);
     return repo.findById(input.id);
   },

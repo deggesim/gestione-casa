@@ -85,3 +85,31 @@ test('DELETE /andamento/:id removes; unknown id → 404', async () => {
   expect((await req(`/andamento/${list[0].id}`, { method: 'DELETE' })).status).toBe(200);
   expect((await req('/andamento/999999', { method: 'DELETE' })).status).toBe(404);
 });
+
+test('PUT /andamento/:id with a nonexistent tipoSpesa → 400', async () => {
+  const list = await (await req('/andamento')).json();
+  const id = list[0].id;
+  const res = await req(`/andamento/${id}`, {
+    method: 'PUT',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({
+      id,
+      giorno: '2025-01-10',
+      descrizione: 'mod',
+      costo: 5,
+      tipoSpesa: { id: 999 },
+    }),
+  });
+  expect(res.status).toBe(400);
+});
+
+test('GET /andamento/:id found and missing', async () => {
+  const list = await (await req('/andamento')).json();
+  const found = await req(`/andamento/${list[0].id}`);
+  expect(found.status).toBe(200);
+  const foundBody = await found.json();
+  expect(foundBody.descrizione).toBe(list[0].descrizione);
+
+  const missing = await req('/andamento/999999');
+  expect(missing.status).toBe(404);
+});
