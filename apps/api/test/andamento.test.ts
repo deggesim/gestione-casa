@@ -51,6 +51,20 @@ test('POST /andamento with missing tipoSpesa → 400', async () => {
   expect(res.status).toBe(400);
 });
 
+test('POST /andamento with costo below minimum → 400', async () => {
+  const res = await req('/andamento', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({
+      giorno: '2025-03-01',
+      descrizione: 'x',
+      costo: 0,
+      tipoSpesa: { id: 1 },
+    }),
+  });
+  expect(res.status).toBe(400);
+});
+
 test('PUT /andamento/:id updates; unknown id → 400', async () => {
   const list = await (await req('/andamento')).json();
   const id = list[0].id;
