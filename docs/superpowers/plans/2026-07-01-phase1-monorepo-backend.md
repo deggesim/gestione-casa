@@ -665,6 +665,10 @@ export const withErrorHandling = <T extends Elysia>(app: T) =>
           return status(404, { message: error.message });
         case 'AuthError':
           return status(401, { message: error.message });
+        case 'VALIDATION':
+          // Elysia's built-in body/params validation failure. Map to 400 to
+          // match the API's "bad input → 400" convention (Elysia defaults to 422).
+          return status(400, { message: error.message });
       }
     });
 ```
