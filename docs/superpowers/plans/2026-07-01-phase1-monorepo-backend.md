@@ -106,6 +106,7 @@ gestione-casa/
     "lint": "prettier --check ."
   },
   "devDependencies": {
+    "@types/bun": "latest",
     "prettier": "^3.5.3",
     "typescript": "^5.8.2"
   }
@@ -121,7 +122,6 @@ gestione-casa/
     "target": "ESNext",
     "module": "ESNext",
     "moduleResolution": "bundler",
-    "types": ["bun-types"],
     "esModuleInterop": true,
     "skipLibCheck": true,
     "noUncheckedIndexedAccess": true,
@@ -132,10 +132,9 @@ gestione-casa/
 
 - [ ] **Step 3: Create `bunfig.toml`, `.prettierrc`, `.gitignore`**
 
-`bunfig.toml`:
+`bunfig.toml` (the `[test] preload` is intentionally NOT added here — the preloaded `setup.ts` does not exist until Task 4; adding it now breaks `bun test` in Tasks 2–3. Task 4 Step 5 adds it):
 ```toml
-[test]
-preload = ["./apps/api/test/setup.ts"]
+# Bun configuration. The test preload is added in Task 4, once apps/api/test/setup.ts exists.
 ```
 
 `.prettierrc`:
@@ -581,10 +580,20 @@ if (process.env.DATABASE_URL) {
 }
 ```
 
-- [ ] **Step 5: Verify setup runs**
+- [ ] **Step 5: Register the test preload in `bunfig.toml`** (now that `setup.ts` exists)
+
+Set the root `bunfig.toml` to:
+```toml
+[test]
+preload = ["./apps/api/test/setup.ts"]
+```
+
+- [ ] **Step 6: Verify setup runs**
 
 Run: `DATABASE_URL='<test db url>' JWT_SECRET='x' bun test apps/api/test/health.test.ts`
 Expected: PASS (preload creates schema/tables without error).
+
+- [ ] **Step 7: Commit** — supersedes the original commit step below; commit `bunfig.toml` alongside the schema/setup files.
 
 - [ ] **Step 6: Commit**
 
