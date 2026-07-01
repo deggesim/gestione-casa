@@ -1134,7 +1134,9 @@ export const createUtenteService = (
   jwt: Jwt,
 ) => ({
   register: async (email: string, password: string) => {
-    const hash = await Bun.password.hash(password); // bcrypt-compatible default
+    // Match the original server exactly: bcrypt, 8 rounds. (Bun.password.hash
+    // defaults to argon2id; Bun.password.verify auto-detects legacy bcrypt hashes.)
+    const hash = await Bun.password.hash(password, { algorithm: 'bcrypt', cost: 8 });
     const created = await repo.create(email, hash);
     return { id: created.id, email: created.email };
   },
@@ -1153,7 +1155,7 @@ export const createUtenteService = (
   },
   update: async (id: number, password: string) => {
     if (!password) throw new BadRequestError('Password richiesta');
-    await repo.updatePassword(id, await Bun.password.hash(password));
+    await repo.updatePassword(id, await Bun.password.hash(password, { algorithm: 'bcrypt', cost: 8 }));
     return repo.findById(id).then((u) => ({ id: u!.id, email: u!.email }));
   },
   logout: (id: number, token: string) => repo.removeToken(id, token),
@@ -1288,7 +1290,10 @@ test('statistics yearly for all default categories aggregates to 2025', async ()
   const rows = await repo.statistics(Interval.anno);
   const y2025 = rows.find((r) => r.name === '2025');
   expect(y2025).toBeDefined();
-  expect(Number(y2025!.value)).toBe(270); // 100+80+50+40, all fixture categories are in the yearly default set
+  // Yearly "tutto" default set is (1,3,7,9,10,13,16): spesa(1)=180 + bolletta(3)=40 = 220.
+  // carburante(2)=50 is deliberately EXCLUDED from the yearly set (verbatim original behavior;
+  // note the MONTHLY default set (1,2,3,5,7,9,13,16) DOES include 2 — the asymmetry is intentional).
+  expect(Number(y2025!.value)).toBe(220);
 });
 ```
 
