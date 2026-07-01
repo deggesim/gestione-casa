@@ -1,2 +1,1 @@
-[test]
-preload = ["./apps/api/test/setup.ts"]
+# Bun configuration. The test preload is added later, once apps/api/test/setup.ts exists.

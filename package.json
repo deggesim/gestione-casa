@@ -8,6 +8,7 @@
     "lint": "prettier --check ."
   },
   "devDependencies": {
+    "@types/bun": "latest",
     "prettier": "^3.5.3",
     "typescript": "^5.8.2"
   }
