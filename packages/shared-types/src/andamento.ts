@@ -3,7 +3,10 @@ import { TipoSpesaSchema } from './tipo-spesa';
 
 export const AndamentoSchema = Type.Object({
   id: Type.Optional(Type.Union([Type.Number(), Type.Null()])),
-  giorno: Type.String(), // ISO date (YYYY-MM-DD)
+  // bun-sql maps PG `date` columns to a real JS Date (despite drizzle's "string
+  // mode" column builder); Type.Date() validates the handler's actual pre-serialization
+  // return value, JSON.stringify still emits an ISO string on the wire either way.
+  giorno: Type.Date(),
   descrizione: Type.String(),
   costo: Type.Number({ minimum: 0.01 }),
   tipoSpesa: TipoSpesaSchema,

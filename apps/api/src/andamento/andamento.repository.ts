@@ -12,7 +12,9 @@ const toAndamento = (row: {
   tsDescrizione: string;
 }): Andamento => ({
   id: row.id,
-  giorno: row.giorno,
+  // bun-sql actually returns PG `date` columns as a Date (despite Drizzle's "string
+  // mode" static type); Date(...) normalizes either shape into a real Date instance.
+  giorno: new Date(row.giorno),
   descrizione: row.descrizione,
   costo: Number(row.costo),
   tipoSpesa: { id: row.tipoSpesaId, descrizione: row.tsDescrizione },

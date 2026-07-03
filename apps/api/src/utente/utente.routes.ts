@@ -1,5 +1,11 @@
 import { Elysia } from 'elysia';
-import { LoginInputSchema, UpdateMeInputSchema } from '@gc/shared-types';
+import {
+  LoginInputSchema,
+  UpdateMeInputSchema,
+  UtenteSchema,
+  LoginResponseSchema,
+  MessageSchema,
+} from '@gc/shared-types';
 import { db } from '../db/client';
 import { jwtConfig, authPlugin } from '../auth/auth.plugin';
 import {
@@ -37,7 +43,7 @@ export const utenteRoutes = new Elysia({ prefix: '/utente' })
       setSession(cookie as unknown as Jar, access, refresh);
       return { utente };
     },
-    { body: LoginInputSchema },
+    { body: LoginInputSchema, response: LoginResponseSchema },
   )
   .post(
     '/',
@@ -45,17 +51,21 @@ export const utenteRoutes = new Elysia({ prefix: '/utente' })
       set.status = 201;
       return service.register(body.email, body.password);
     },
-    { body: LoginInputSchema },
+    { body: LoginInputSchema, response: { 201: UtenteSchema } },
   )
-  .post('/refresh', async ({ cookie, service }) => {
-    const raw = cookie[REFRESH_COOKIE]?.value;
-    const { utente, access, refresh } = await service.refresh(typeof raw === 'string' ? raw : '');
-    setSession(cookie as unknown as Jar, access, refresh);
-    return { utente };
-  })
+  .post(
+    '/refresh',
+    async ({ cookie, service }) => {
+      const raw = cookie[REFRESH_COOKIE]?.value;
+      const { utente, access, refresh } = await service.refresh(typeof raw === 'string' ? raw : '');
+      setSession(cookie as unknown as Jar, access, refresh);
+      return { utente };
+    },
+    { response: LoginResponseSchema },
+  )
   // --- guarded ---
   .use(authPlugin)
-  .get('/me', ({ utente }) => utente)
+  .get('/me', ({ utente }) => utente, { response: UtenteSchema })
   .patch(
     '/me',
     async ({ utente, body, service, cookie }) => {
@@ -63,21 +73,33 @@ export const utenteRoutes = new Elysia({ prefix: '/utente' })
       clearSession(cookie as unknown as Jar); // force re-auth after credential change
       return updated;
     },
-    { body: UpdateMeInputSchema },
+    { body: UpdateMeInputSchema, response: UtenteSchema },
   )
-  .delete('/me', async ({ utente, service, cookie }) => {
-    await service.remove(utente.id);
-    clearSession(cookie as unknown as Jar);
-    return { message: 'ok' };
-  })
-  .post('/logout', async ({ utente, service, cookie }) => {
-    const raw = cookie[REFRESH_COOKIE]?.value;
-    await service.logout(utente.id, typeof raw === 'string' ? raw : '');
-    clearSession(cookie as unknown as Jar);
-    return { message: 'ok' };
-  })
-  .post('/logout-all', async ({ utente, service, cookie }) => {
-    await service.logoutAll(utente.id);
-    clearSession(cookie as unknown as Jar);
-    return { message: 'ok' };
-  });
+  .delete(
+    '/me',
+    async ({ utente, service, cookie }) => {
+      await service.remove(utente.id);
+      clearSession(cookie as unknown as Jar);
+      return { message: 'ok' };
+    },
+    { response: MessageSchema },
+  )
+  .post(
+    '/logout',
+    async ({ utente, service, cookie }) => {
+      const raw = cookie[REFRESH_COOKIE]?.value;
+      await service.logout(utente.id, typeof raw === 'string' ? raw : '');
+      clearSession(cookie as unknown as Jar);
+      return { message: 'ok' };
+    },
+    { response: MessageSchema },
+  )
+  .post(
+    '/logout-all',
+    async ({ utente, service, cookie }) => {
+      await service.logoutAll(utente.id);
+      clearSession(cookie as unknown as Jar);
+      return { message: 'ok' };
+    },
+    { response: MessageSchema },
+  );
