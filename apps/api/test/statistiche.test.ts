@@ -13,16 +13,16 @@ beforeEach(async () => {
 // Fixtures: spesa 100 (2025-01) + 80 (2025-02); carburante 50 (2025-01); bolletta 40 (2025-02).
 test('speseFrequenti (A) sums by category, ordered by value DESC', async () => {
   const rows = await repo.speseFrequenti(Interval.tutto);
-  expect(rows.map((r) => [r.name, Number(r.value)])).toEqual([
-    ['spesa', 180],
-    ['carburante', 50],
-    ['bolletta', 40],
+  expect(rows).toEqual([
+    { name: 'spesa', value: 180 },
+    { name: 'carburante', value: 50 },
+    { name: 'bolletta', value: 40 },
   ]);
 });
 
 test('statistics monthly for spesa (id 1) fills gaps with 0 and formats YYYYMM DESC', async () => {
   const rows = await repo.statistics(Interval.mese, 1);
-  const map = Object.fromEntries(rows.map((r) => [r.name, Number(r.value)]));
+  const map = Object.fromEntries(rows.map((r) => [r.name, r.value]));
   expect(map['202501']).toBe(100);
   expect(map['202502']).toBe(80);
   // spesa has no entry before Jan; series starts at year start -> earlier months are 0 if present
@@ -36,5 +36,6 @@ test('statistics yearly for all default categories aggregates to 2025', async ()
   // Yearly "tutto" default set is (1,3,7,9,10,13,16): spesa(1)=180 + bolletta(3)=40 = 220.
   // carburante(2)=50 is deliberately EXCLUDED from the yearly set (verbatim original behavior;
   // note the MONTHLY default set (1,2,3,5,7,9,13,16) DOES include 2 — the asymmetry is intentional).
-  expect(Number(y2025!.value)).toBe(220);
+  expect(y2025!.value).toBe(220);
+  expect(typeof y2025!.value).toBe('number');
 });
