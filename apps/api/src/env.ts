@@ -9,4 +9,7 @@ export const env = {
   JWT_SECRET: required('JWT_SECRET'),
   PORT: Number(process.env.PORT ?? 5000),
   CORS_ORIGIN: process.env.CORS_ORIGIN ?? '*',
+  // Cookies: Secure only over HTTPS (prod). Domain lets api.<d>/app.<d> share the cookie.
+  COOKIE_SECURE: process.env.COOKIE_SECURE === 'true',
+  COOKIE_DOMAIN: process.env.COOKIE_DOMAIN || undefined,
 };
