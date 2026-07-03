@@ -40,6 +40,10 @@ export const createUtenteService = (repo: ReturnType<typeof createUtenteReposito
       const found = await repo.findById(id);
       if (!found) throw new AuthError('Utente non trovato');
       // Rotate: the used refresh token is single-use.
+      // ponytail: non-atomic (findToken → removeToken → issue); two simultaneous
+      // refreshes with the same cookie could double-issue. Fine for a single-user
+      // household app. Upgrade path if multi-device concurrency matters: UNIQUE(token)
+      // + a transaction or SELECT ... FOR UPDATE around the rotate.
       await repo.removeToken(id, rawRefresh);
       return issue(found.id, found.email);
     },
