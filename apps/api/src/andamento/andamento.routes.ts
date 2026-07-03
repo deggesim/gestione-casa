@@ -1,12 +1,14 @@
 import { Elysia, t } from 'elysia';
 import { AndamentoInputSchema } from '@gc/shared-types';
 import { db } from '../db/client';
+import { authPlugin } from '../auth/auth.plugin';
 import { createAndamentoRepository } from './andamento.repository';
 import { createAndamentoService } from './andamento.service';
 
 const service = createAndamentoService(createAndamentoRepository(db));
 
 export const andamentoRoutes = new Elysia({ prefix: '/andamento' })
+  .use(authPlugin)
   .get('/', () => service.findAll())
   .get('/:id', ({ params }) => service.findById(params.id), {
     params: t.Object({ id: t.Number() }),

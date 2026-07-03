@@ -2,13 +2,49 @@ import { test, expect, beforeEach } from 'bun:test';
 import { buildApp } from '../src/app';
 import { resetDb, seedFixtures } from './setup';
 
+let cookie = '';
 beforeEach(async () => {
   await resetDb();
   await seedFixtures();
+  cookie = await login();
 });
 
-const req = (path: string, init?: RequestInit) =>
-  buildApp().handle(new Request(`http://localhost${path}`, init));
+const cookieHeader = (res: Response) =>
+  res.headers
+    .getSetCookie()
+    .map((c) => c.split(';')[0])
+    .join('; ');
+
+const login = async () => {
+  await buildApp().handle(
+    new Request('http://localhost/utente', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ email: 'a@b.it', password: 'pw' }),
+    }),
+  );
+  const res = await buildApp().handle(
+    new Request('http://localhost/utente/login', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ email: 'a@b.it', password: 'pw' }),
+    }),
+  );
+  return cookieHeader(res);
+};
+
+const req = (path: string, init: RequestInit = {}) =>
+  buildApp().handle(
+    new Request(`http://localhost${path}`, {
+      ...init,
+      headers: { ...(init.headers ?? {}), cookie },
+    }),
+  );
+
+test('GET /andamento without a session → 401', async () => {
+  const res = await buildApp().handle(new Request('http://localhost/andamento'));
+  expect(res.status).toBe(401);
+});
 
 test('GET /andamento returns entries sorted by giorno DESC, costo is a number', async () => {
   const res = await req('/andamento');
