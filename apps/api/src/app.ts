@@ -15,3 +15,5 @@ export const buildApp = () =>
     .use(andamentoRoutes)
     .use(utenteRoutes)
     .use(statisticheRoutes);
+
+export type App = ReturnType<typeof buildApp>;

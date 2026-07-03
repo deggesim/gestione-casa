@@ -52,6 +52,7 @@ test('GET /andamento returns entries sorted by giorno DESC, costo is a number', 
   const body = await res.json();
   expect(body).toHaveLength(4);
   expect(body[0].giorno >= body[1].giorno).toBe(true);
+  expect(body[0].giorno).toMatch(/^\d{4}-\d{2}-\d{2}$/);
   expect(typeof body[0].costo).toBe('number');
   expect(body[0].tipoSpesa.descrizione).toBeDefined();
 });

@@ -3,7 +3,7 @@ import { TipoSpesaSchema } from './tipo-spesa';
 
 export const AndamentoSchema = Type.Object({
   id: Type.Optional(Type.Union([Type.Number(), Type.Null()])),
-  giorno: Type.String(), // ISO date (YYYY-MM-DD)
+  giorno: Type.String(), // ISO date "YYYY-MM-DD" (wire is a string; repo formats the bun-sql Date)
   descrizione: Type.String(),
   costo: Type.Number({ minimum: 0.01 }),
   tipoSpesa: TipoSpesaSchema,

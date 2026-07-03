@@ -13,7 +13,7 @@ export const createAndamentoService = (repo: ReturnType<typeof createAndamentoRe
     if (!(await repo.tipoSpesaExists(input.tipoSpesa.id)))
       throw new BadRequestError(`TipoSpesa ${input.tipoSpesa.id} not found`);
     const id = await repo.insert(input);
-    return repo.findById(id);
+    return (await repo.findById(id))!; // just inserted → guaranteed present
   },
   update: async (input: AndamentoInput) => {
     if (input.id == null || !(await repo.findById(input.id)))
@@ -21,7 +21,7 @@ export const createAndamentoService = (repo: ReturnType<typeof createAndamentoRe
     if (!(await repo.tipoSpesaExists(input.tipoSpesa.id)))
       throw new BadRequestError(`TipoSpesa ${input.tipoSpesa.id} not found`);
     await repo.update(input);
-    return repo.findById(input.id);
+    return (await repo.findById(input.id))!; // just updated → guaranteed present
   },
   remove: async (id: number) => {
     if ((await repo.remove(id)) === 0) throw new NotFoundError(`Andamento ${id} not found`);

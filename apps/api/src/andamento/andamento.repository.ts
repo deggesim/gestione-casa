@@ -5,14 +5,16 @@ import type { Andamento, AndamentoInput } from '@gc/shared-types';
 
 const toAndamento = (row: {
   id: number;
-  giorno: string;
+  giorno: string | Date;
   descrizione: string;
   costo: string;
   tipoSpesaId: number;
   tsDescrizione: string;
 }): Andamento => ({
   id: row.id,
-  giorno: row.giorno,
+  // bun-sql returns PG `date` as a Date; normalize to the "YYYY-MM-DD" wire string (parity + honest type).
+  // bun-sql parses date as UTC midnight, so toISOString().slice(0,10) yields the correct calendar day.
+  giorno: row.giorno instanceof Date ? row.giorno.toISOString().slice(0, 10) : row.giorno,
   descrizione: row.descrizione,
   costo: Number(row.costo),
   tipoSpesa: { id: row.tipoSpesaId, descrizione: row.tsDescrizione },

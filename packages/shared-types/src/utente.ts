@@ -17,3 +17,6 @@ export const UpdateMeInputSchema = Type.Object({
   password: Type.String(),
 });
 export type UpdateMeInput = Static<typeof UpdateMeInputSchema>;
+
+export const LoginResponseSchema = Type.Object({ utente: UtenteSchema });
+export type LoginResponse = Static<typeof LoginResponseSchema>;

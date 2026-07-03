@@ -8,20 +8,20 @@ export const createStatisticheRepository = (db: typeof Db) => {
     if (interval === Interval.mese) whereCondition = sql`WHERE giorno > NOW() - interval '1 MONTH'`;
     else if (interval === Interval.anno)
       whereCondition = sql`WHERE giorno > NOW() - interval '1 YEAR'`;
-    const result = await db.execute<Statistica>(sql`
+    const result = await db.execute<{ name: string; value: string }>(sql`
       SELECT ts.descrizione AS name, SUM(a.costo) AS value
       FROM gc.andamento a JOIN gc.tipo_spesa ts ON a.tipo_spesa_id = ts.id
       ${whereCondition}
       GROUP BY ts.id, ts.descrizione
       ORDER BY value DESC
     `);
-    return [...result] as Statistica[];
+    return [...result].map((r) => ({ name: r.name, value: Number(r.value) }));
   };
 
   const statistics = async (interval: Interval, tipoSpesa?: number): Promise<Statistica[]> => {
     if (interval === Interval.mese) {
       const filter = tipoSpesa != null ? sql`= ${tipoSpesa}` : sql`in (1,2,3,5,7,9,13,16)`;
-      const result = await db.execute<Statistica>(sql`
+      const result = await db.execute<{ name: string; value: string }>(sql`
         with filtered_andamento as (
           select * from gc.andamento where gc.andamento.tipo_spesa_id ${filter}
         ),
@@ -41,11 +41,11 @@ export const createStatisticheRepository = (db: typeof Db) => {
         order by m.month desc
         limit 48
       `);
-      return [...result] as Statistica[];
+      return [...result].map((r) => ({ name: r.name, value: Number(r.value) }));
     }
     if (interval === Interval.anno) {
       const filter = tipoSpesa != null ? sql`= ${tipoSpesa}` : sql`in (1,3,7,9,10,13,16)`;
-      const result = await db.execute<Statistica>(sql`
+      const result = await db.execute<{ name: string; value: string }>(sql`
         with filtered_andamento as (
           select * from gc.andamento where gc.andamento.tipo_spesa_id ${filter}
         ),
@@ -64,7 +64,7 @@ export const createStatisticheRepository = (db: typeof Db) => {
         group by y.anno
         order by y.anno desc
       `);
-      return [...result] as Statistica[];
+      return [...result].map((r) => ({ name: r.name, value: Number(r.value) }));
     }
     return []; // Interval.tutto: original falls through to empty (preserved behavior)
   };
