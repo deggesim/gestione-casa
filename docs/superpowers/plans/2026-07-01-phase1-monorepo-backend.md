@@ -106,6 +106,7 @@ gestione-casa/
     "lint": "prettier --check ."
   },
   "devDependencies": {
+    "@types/bun": "latest",
     "prettier": "^3.5.3",
     "typescript": "^5.8.2"
   }
@@ -121,7 +122,6 @@ gestione-casa/
     "target": "ESNext",
     "module": "ESNext",
     "moduleResolution": "bundler",
-    "types": ["bun-types"],
     "esModuleInterop": true,
     "skipLibCheck": true,
     "noUncheckedIndexedAccess": true,
@@ -132,10 +132,9 @@ gestione-casa/
 
 - [ ] **Step 3: Create `bunfig.toml`, `.prettierrc`, `.gitignore`**
 
-`bunfig.toml`:
+`bunfig.toml` (the `[test] preload` is intentionally NOT added here — the preloaded `setup.ts` does not exist until Task 4; adding it now breaks `bun test` in Tasks 2–3. Task 4 Step 5 adds it):
 ```toml
-[test]
-preload = ["./apps/api/test/setup.ts"]
+# Bun configuration. The test preload is added in Task 4, once apps/api/test/setup.ts exists.
 ```
 
 `.prettierrc`:
@@ -565,7 +564,7 @@ export const resetDb = async () => {
 // Deterministic fixtures used by characterization tests.
 export const seedFixtures = async () => {
   await db.execute(sql`
-    INSERT INTO gc.tipo_spesa (id, descrizione) OVERRIDING SYSTEM VALUE VALUES
+    INSERT INTO gc.tipo_spesa (id, descrizione) VALUES
       (1,'spesa'),(2,'carburante'),(3,'bolletta'),(7,'casa');
     INSERT INTO gc.andamento (giorno, descrizione, costo, tipo_spesa_id) VALUES
       ('2025-01-10','spesa gen',100,1),
@@ -576,15 +575,26 @@ export const seedFixtures = async () => {
   `);
 };
 
-if (process.env.DATABASE_URL) {
-  await db.execute(ddl);
-}
+// bun preloads this file for every `bun test` run. env.ts already throws if
+// DATABASE_URL is unset (eager `required()`), so the DDL runs unconditionally
+// here — it is idempotent (CREATE ... IF NOT EXISTS).
+await db.execute(ddl);
 ```
 
-- [ ] **Step 5: Verify setup runs**
+- [ ] **Step 5: Register the test preload in `bunfig.toml`** (now that `setup.ts` exists)
+
+Set the root `bunfig.toml` to:
+```toml
+[test]
+preload = ["./apps/api/test/setup.ts"]
+```
+
+- [ ] **Step 6: Verify setup runs**
 
 Run: `DATABASE_URL='<test db url>' JWT_SECRET='x' bun test apps/api/test/health.test.ts`
 Expected: PASS (preload creates schema/tables without error).
+
+- [ ] **Step 7: Commit** — supersedes the original commit step below; commit `bunfig.toml` alongside the schema/setup files.
 
 - [ ] **Step 6: Commit**
 
@@ -655,6 +665,10 @@ export const withErrorHandling = <T extends Elysia>(app: T) =>
           return status(404, { message: error.message });
         case 'AuthError':
           return status(401, { message: error.message });
+        case 'VALIDATION':
+          // Elysia's built-in body/params validation failure. Map to 400 to
+          // match the API's "bad input → 400" convention (Elysia defaults to 422).
+          return status(400, { message: error.message });
       }
     });
 ```
@@ -967,6 +981,11 @@ export const createAndamentoService = (repo: ReturnType<typeof createAndamentoRe
   update: async (input: AndamentoInput) => {
     if (input.id == null || !(await repo.findById(input.id)))
       throw new BadRequestError(`Andamento ${input.id} not found`);
+    // Parity with the original server: update also validates the referenced
+    // tipoSpesa (both create and update route through the same check there),
+    // so a bad FK returns 400 rather than hitting the DB constraint (500).
+    if (!(await repo.tipoSpesaExists(input.tipoSpesa.id)))
+      throw new BadRequestError(`TipoSpesa ${input.tipoSpesa.id} not found`);
     await repo.update(input);
     return repo.findById(input.id);
   },
@@ -1119,7 +1138,9 @@ export const createUtenteService = (
   jwt: Jwt,
 ) => ({
   register: async (email: string, password: string) => {
-    const hash = await Bun.password.hash(password); // bcrypt-compatible default
+    // Match the original server exactly: bcrypt, 8 rounds. (Bun.password.hash
+    // defaults to argon2id; Bun.password.verify auto-detects legacy bcrypt hashes.)
+    const hash = await Bun.password.hash(password, { algorithm: 'bcrypt', cost: 8 });
     const created = await repo.create(email, hash);
     return { id: created.id, email: created.email };
   },
@@ -1138,7 +1159,7 @@ export const createUtenteService = (
   },
   update: async (id: number, password: string) => {
     if (!password) throw new BadRequestError('Password richiesta');
-    await repo.updatePassword(id, await Bun.password.hash(password));
+    await repo.updatePassword(id, await Bun.password.hash(password, { algorithm: 'bcrypt', cost: 8 }));
     return repo.findById(id).then((u) => ({ id: u!.id, email: u!.email }));
   },
   logout: (id: number, token: string) => repo.removeToken(id, token),
@@ -1273,7 +1294,10 @@ test('statistics yearly for all default categories aggregates to 2025', async ()
   const rows = await repo.statistics(Interval.anno);
   const y2025 = rows.find((r) => r.name === '2025');
   expect(y2025).toBeDefined();
-  expect(Number(y2025!.value)).toBe(270); // 100+80+50+40, all fixture categories are in the yearly default set
+  // Yearly "tutto" default set is (1,3,7,9,10,13,16): spesa(1)=180 + bolletta(3)=40 = 220.
+  // carburante(2)=50 is deliberately EXCLUDED from the yearly set (verbatim original behavior;
+  // note the MONTHLY default set (1,2,3,5,7,9,13,16) DOES include 2 — the asymmetry is intentional).
+  expect(Number(y2025!.value)).toBe(220);
 });
 ```
 
