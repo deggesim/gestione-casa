@@ -11,3 +11,9 @@ export const LoginInputSchema = Type.Object({
   password: Type.String(),
 });
 export type LoginInput = Static<typeof LoginInputSchema>;
+
+export const UpdateMeInputSchema = Type.Object({
+  email: Type.Optional(Type.String()),
+  password: Type.String(),
+});
+export type UpdateMeInput = Static<typeof UpdateMeInputSchema>;
