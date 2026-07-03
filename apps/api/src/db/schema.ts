@@ -9,9 +9,9 @@ export const tipoSpesa = gc.table('tipo_spesa', {
 
 export const andamento = gc.table('andamento', {
   id: serial('id').primaryKey(),
-  giorno: date('giorno').notNull(), // string mode (YYYY-MM-DD)
+  giorno: date('giorno').notNull(), // PG date; drizzle-orm/bun-sql returns a JS Date regardless of mode — normalized to "YYYY-MM-DD" in andamento.repository.ts
   descrizione: text('descrizione').notNull(),
-  costo: numeric('costo', { precision: 10, scale: 2 }).notNull(), // returned as string by pg; coerce in service
+  costo: numeric('costo', { precision: 10, scale: 2 }).notNull(), // returned as string by pg; coerced to number in andamento.repository.ts
   tipoSpesaId: integer('tipo_spesa_id')
     .notNull()
     .references(() => tipoSpesa.id),
