@@ -4,7 +4,7 @@ import type { createUtenteRepository } from './utente.repository';
 
 type Jwt = {
   sign: (payload: { id: string; type: 'access' | 'refresh'; exp: string }) => Promise<string>;
-  verify: (token?: string) => Promise<false | { id?: unknown; type?: unknown }>;
+  verify: (token?: string) => Promise<false | Record<string, unknown>>;
 };
 
 const hash = (password: string) => Bun.password.hash(password, { algorithm: 'bcrypt', cost: 8 });
