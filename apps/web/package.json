@@ -10,10 +10,15 @@
     "test": "bun test --preload ./happydom.ts"
   },
   "dependencies": {
+    "@elysiajs/eden": "^1.4.0",
+    "@gc/api": "workspace:*",
+    "@gc/shared-types": "workspace:*",
+    "@tanstack/react-query": "^5",
     "bootstrap": "^5.3.3",
     "bootswatch": "^5.3.3",
     "react": "^19",
-    "react-dom": "^19"
+    "react-dom": "^19",
+    "sonner": "^2.0.7"
   },
   "devDependencies": {
     "@happy-dom/global-registrator": "^20.10.6",
