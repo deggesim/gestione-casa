@@ -20,10 +20,22 @@ export const handleUnauthorized = async (deps: {
   else await deps.invalidateMe();
 };
 
+// Server-provided error text from an Eden error, if any (string body, or {message}/{error}).
+export const errorBody = (error: unknown): string | undefined => {
+  const v = (error as { value?: unknown } | null)?.value;
+  if (typeof v === 'string') return v;
+  if (v && typeof v === 'object') {
+    const o = v as { message?: unknown; error?: unknown };
+    if (typeof o.message === 'string') return o.message;
+    if (typeof o.error === 'string') return o.error;
+  }
+  return undefined;
+};
+
 const notify = (error: unknown) => {
   const status = statusOf(error) ?? 0;
-  const { message } = apiErrorMessage(status);
-  toast.error(message);
+  const { title, message } = apiErrorMessage(status, errorBody(error));
+  toast.error(title, { description: message });
 };
 
 // One QueryClient with global error handling: toast every error; on 401, try one
