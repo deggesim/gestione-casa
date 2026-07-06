@@ -1,4 +1,4 @@
-import { test, expect, mock } from 'bun:test';
+import { test, expect, afterAll, mock } from 'bun:test';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { LoginForm } from '../src/login/LoginForm';
@@ -6,6 +6,10 @@ import { LoginForm } from '../src/login/LoginForm';
 mock.module('@tanstack/react-router', () => ({ useNavigate: () => () => {} }));
 
 // afterEach(cleanup) now lives in happydom.ts's preload, applying to every test file.
+
+// mock.module is process-global in Bun — restore it so this mock can't leak
+// into other test files that import '@tanstack/react-router'.
+afterAll(() => mock.restore());
 
 const renderForm = () => {
   const qc = new QueryClient();

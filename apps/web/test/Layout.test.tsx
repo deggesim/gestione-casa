@@ -1,4 +1,4 @@
-import { test, expect, afterEach, mock } from 'bun:test';
+import { test, expect, afterEach, afterAll, mock } from 'bun:test';
 import { render, screen, cleanup } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
@@ -15,6 +15,7 @@ mock.module('@tanstack/react-router', () => ({
 }));
 mock.module('../src/auth/useAuth', () => ({
   useMe: () => ({ data: meData }),
+  useLogin: () => ({ mutate: () => {} }),
   useLogout: () => ({ mutate: () => {} }),
 }));
 
@@ -22,6 +23,9 @@ mock.module('../src/auth/useAuth', () => ({
 const { Layout } = await import('../src/layout/Layout');
 
 afterEach(cleanup);
+// mock.module is process-global in Bun — restore it so these mocks can't leak
+// into other test files that import the same module specifiers.
+afterAll(() => mock.restore());
 
 const renderLayout = () => {
   const qc = new QueryClient();
