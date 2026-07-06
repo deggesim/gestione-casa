@@ -4,6 +4,17 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "typecheck": "tsc --noEmit || true"
+    "dev": "bun ./index.html --port 3000",
+    "build": "bun build ./index.html --outdir dist --minify",
+    "typecheck": "tsc --noEmit",
+    "test": "bun test --preload ./happydom.ts"
+  },
+  "dependencies": {
+    "react": "^19",
+    "react-dom": "^19"
+  },
+  "devDependencies": {
+    "@types/react": "^19",
+    "@types/react-dom": "^19"
   }
 }
