@@ -7,7 +7,7 @@
   ],
   "scripts": {
     "typecheck": "bun run --filter '*' typecheck",
-    "test": "bun test",
+    "test": "bun test apps/api packages/shared-types && bun run --filter '@gc/web' test",
     "lint": "prettier --check ."
   },
   "devDependencies": {

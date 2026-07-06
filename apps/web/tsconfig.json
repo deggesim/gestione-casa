@@ -6,5 +6,5 @@
     "types": ["react", "react-dom", "bun"],
     "noEmit": true
   },
-  "include": ["src", "happydom.ts"]
+  "include": ["src", "happydom.ts", "test"]
 }
