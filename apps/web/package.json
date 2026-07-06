@@ -14,6 +14,7 @@
     "@gc/api": "workspace:*",
     "@gc/shared-types": "workspace:*",
     "@tanstack/react-query": "^5",
+    "@tanstack/react-router": "^1.170.17",
     "bootstrap": "^5.3.3",
     "bootswatch": "^5.3.3",
     "react": "^19",
