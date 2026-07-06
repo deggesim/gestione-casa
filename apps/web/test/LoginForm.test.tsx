@@ -1,14 +1,11 @@
-import { test, expect, mock, afterEach } from 'bun:test';
-import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/react';
+import { test, expect, mock } from 'bun:test';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { LoginForm } from '../src/login/LoginForm';
 
 mock.module('@tanstack/react-router', () => ({ useNavigate: () => () => {} }));
 
-// bun:test doesn't trigger RTL's auto-cleanup; with two tests now rendering
-// into the same happy-dom document, an unmounted leftover form from a prior
-// test would make later `getByLabelText` queries match more than one element.
-afterEach(cleanup);
+// afterEach(cleanup) now lives in happydom.ts's preload, applying to every test file.
 
 const renderForm = () => {
   const qc = new QueryClient();

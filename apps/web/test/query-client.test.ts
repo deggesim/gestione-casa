@@ -1,5 +1,5 @@
 import { test, expect, mock } from 'bun:test';
-import { handleUnauthorized, errorBody } from '../src/query/query-client';
+import { handleUnauthorized, errorBody, isSilencedAuthProbe } from '../src/query/query-client';
 
 test('handleUnauthorized: refresh ok → invalidate me, no redirect', async () => {
   const refresh = mock(async () => ({ error: null }));
@@ -32,4 +32,17 @@ test('errorBody: object value → message then error field', () => {
 test('errorBody: no usable body → undefined', () => {
   expect(errorBody({ status: 500 })).toBeUndefined();
   expect(errorBody(null)).toBeUndefined();
+});
+
+test('isSilencedAuthProbe: 401 on an auth-probe query → true', () => {
+  expect(isSilencedAuthProbe({ status: 401 }, { meta: { authProbe: true } })).toBe(true);
+});
+
+test('isSilencedAuthProbe: 401 without authProbe meta → false', () => {
+  expect(isSilencedAuthProbe({ status: 401 }, { meta: {} })).toBe(false);
+  expect(isSilencedAuthProbe({ status: 401 })).toBe(false);
+});
+
+test('isSilencedAuthProbe: non-401 on an auth-probe query → false', () => {
+  expect(isSilencedAuthProbe({ status: 500 }, { meta: { authProbe: true } })).toBe(false);
 });

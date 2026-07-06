@@ -12,6 +12,7 @@ export const requireAuth = (queryClient: QueryClient) => async () => {
         if (error) throw error;
         return data;
       },
+      meta: { authProbe: true },
     });
   } catch {
     throw redirect({ to: '/login' });

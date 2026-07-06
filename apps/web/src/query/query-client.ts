@@ -38,12 +38,18 @@ const notify = (error: unknown) => {
   toast.error(title, { description: message });
 };
 
+// A 401 from an auth-probe query (['me']) is the normal logged-out state, not an
+// error to surface (login screen / route guard both run this probe unauthenticated).
+export const isSilencedAuthProbe = (
+  error: unknown,
+  query?: { meta?: Record<string, unknown> },
+): boolean => query?.meta?.['authProbe'] === true && statusOf(error) === 401;
+
 // One QueryClient with global error handling: toast every error; on 401, try one
 // refresh then either refetch (['me']) or redirect to /login. Mirrors GlobalInterceptor.
+// The auth-probe ['me'] query is exempt (see isSilencedAuthProbe) — mutations have no
+// such exemption, so MutationCache keeps the plain handler.
 export const createQueryClient = (navigate: (path: string) => void): QueryClient => {
-  // Adapted from brief: QueryCache/MutationCache onError callbacks pass extra args
-  // (query / variables / mutation) beyond `error` in @tanstack/react-query@5 — this
-  // handler ignores them, which TS allows since it declares fewer parameters.
   const onError = (error: unknown) => {
     notify(error);
     if (statusOf(error) === 401) {
@@ -55,8 +61,13 @@ export const createQueryClient = (navigate: (path: string) => void): QueryClient
     }
   };
   const qc: QueryClient = new QueryClient({
-    queryCache: new QueryCache({ onError }),
-    mutationCache: new MutationCache({ onError }),
+    queryCache: new QueryCache({
+      onError: (error, query) => {
+        if (isSilencedAuthProbe(error, query)) return;
+        onError(error);
+      },
+    }),
+    mutationCache: new MutationCache({ onError: (error) => onError(error) }),
     defaultOptions: { queries: { retry: false } },
   });
   return qc;
