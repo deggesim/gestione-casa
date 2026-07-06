@@ -1,3 +1,5 @@
+import 'bootswatch/dist/minty/bootstrap.min.css';
+import './styles.css';
 import { createRoot } from 'react-dom/client';
 
 const root = document.getElementById('root');
