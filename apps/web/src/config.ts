@@ -1,2 +1,5 @@
-// API base URL. Dev default localhost:5000; prod via build-time env (Fase 6).
-export const API_URL = process.env.PUBLIC_API_URL ?? 'http://localhost:5000';
+// API base URL — provided via PUBLIC_API_URL (apps/web/.env; see .env.example).
+// Inlined into the browser bundle at build time by Bun (bunfig serve.static env = "PUBLIC_*").
+const apiUrl = process.env.PUBLIC_API_URL;
+if (!apiUrl) throw new Error('Missing required env var: PUBLIC_API_URL (copy apps/web/.env.example to .env)');
+export const API_URL = apiUrl;
