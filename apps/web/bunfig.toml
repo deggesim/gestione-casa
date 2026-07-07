@@ -1,0 +1,3 @@
+[serve.static]
+# Inline process.env.PUBLIC_* into the browser bundle (default is "disable").
+env = "PUBLIC_*"
