@@ -4,6 +4,31 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "typecheck": "tsc --noEmit || true"
+    "dev": "bun ./index.html --port 3000",
+    "build": "bun build ./index.html --outdir dist --minify",
+    "typecheck": "tsc --noEmit",
+    "test": "bun test --preload ./happydom.ts"
+  },
+  "dependencies": {
+    "@elysiajs/eden": "^1.4.0",
+    "@gc/api": "workspace:*",
+    "@gc/shared-types": "workspace:*",
+    "@hookform/resolvers": "^5.4.0",
+    "@tanstack/react-query": "^5",
+    "@tanstack/react-router": "^1.170.17",
+    "bootstrap": "^5.3.3",
+    "bootswatch": "^5.3.3",
+    "react": "^19",
+    "react-bootstrap": "^2.10.10",
+    "react-dom": "^19",
+    "react-hook-form": "^7.81.0",
+    "sonner": "^2.0.7"
+  },
+  "devDependencies": {
+    "@happy-dom/global-registrator": "^20.10.6",
+    "@testing-library/dom": "^10.4.1",
+    "@testing-library/react": "^16.3.2",
+    "@types/react": "^19",
+    "@types/react-dom": "^19"
   }
 }
