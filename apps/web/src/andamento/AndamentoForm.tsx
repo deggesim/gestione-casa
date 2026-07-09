@@ -22,9 +22,12 @@ const toInput = (v: FormValues): AndamentoInput => ({
 // Computed directly from the watched values (not RHF's formState.isValid, which stays
 // stale until the first async validation pass — wrong for a form opened already-valid,
 // e.g. editing an existing Andamento with no field touched yet).
+// descrizione uses !== '' (not .trim()) to match RHF's `required` validator, which
+// does not trim — otherwise a whitespace-only value would disable Salva with no inline
+// error. Parity with the legacy Angular Validators.required (also no trim).
 const isFormValid = (v: FormValues): boolean =>
   v.giorno !== '' &&
-  v.descrizione.trim() !== '' &&
+  v.descrizione !== '' &&
   v.tipoSpesaId !== '' &&
   typeof v.costo === 'number' &&
   v.costo >= 0.01;

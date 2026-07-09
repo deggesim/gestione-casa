@@ -48,6 +48,24 @@ test('costo below 0.01 keeps the form invalid', async () => {
   });
 });
 
+test('whitespace-only descrizione keeps Salva enabled (gate matches RHF required, no trim)', async () => {
+  render(
+    <AndamentoForm
+      titolo="x"
+      initial={emptyForm()}
+      tipiSpesa={tipiSpesa}
+      onSubmit={() => {}}
+      onCancel={() => {}}
+    />,
+  );
+  fireEvent.change(screen.getByLabelText(/tipo spesa/i), { target: { value: '1' } });
+  fireEvent.change(screen.getByLabelText(/costo/i), { target: { value: '3.5' } });
+  fireEvent.change(screen.getByLabelText(/descrizione/i), { target: { value: ' ' } });
+  // giorno is pre-filled by emptyForm(); RHF's `required` accepts ' ', so the gate must too
+  const salva = () => screen.getByRole('button', { name: 'Salva' }) as HTMLButtonElement;
+  await waitFor(() => expect(salva().disabled).toBe(false));
+});
+
 test('submit builds an AndamentoInput with tipoSpesa:{id}, numeric costo, and the id when editing', async () => {
   const onSubmit = mock((_input: unknown) => {});
   render(
