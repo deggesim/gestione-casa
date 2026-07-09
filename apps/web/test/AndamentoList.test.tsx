@@ -32,7 +32,7 @@ const renderList = (data: unknown = rows) => {
 test('renders one page (10 rows) and shows pagination when >10 items', () => {
   renderList();
   expect(screen.getByText('Pane speciale')).toBeDefined();
-  expect(screen.getAllByRole('row').length).toBeLessThanOrEqual(11); // 1 header + 10 body
+  expect(screen.getAllByRole('row').length).toBe(11); // 1 header + 10 body (page 1 of 12)
   expect(screen.getByLabelText(/paginazione/i)).toBeDefined();
 });
 
