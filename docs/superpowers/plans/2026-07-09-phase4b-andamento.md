@@ -1105,12 +1105,13 @@ Create `apps/web/src/andamento/AndamentoList.tsx`:
 ```tsx
 import { useMemo, useState } from 'react';
 import { Pagination } from 'react-bootstrap';
-import { FaChevronDown, FaChevronUp, FaCircleChevronDown, FaCircleChevronUp, FaTimes } from 'react-icons/fa6';
+import { FaChevronDown, FaChevronUp, FaCircleChevronDown, FaCircleChevronUp, FaXmark } from 'react-icons/fa6';
 import { useAndamentoList } from './queries';
 import {
   filterAndamenti,
   formatCosto,
   formatGiorno,
+  pageWindow,
   sortAndamenti,
   type SortDir,
   type SortKey,
@@ -1177,7 +1178,7 @@ export const AndamentoList = () => {
               setPage(1);
             }}
           >
-            <FaTimes />
+            <FaXmark />
           </button>
         </div>
       </div>
@@ -1211,7 +1212,7 @@ export const AndamentoList = () => {
         <Pagination className="justify-content-center" aria-label="Paginazione">
           <Pagination.First disabled={current === 1} onClick={() => setPage(1)} />
           <Pagination.Prev disabled={current === 1} onClick={() => setPage(current - 1)} />
-          {Array.from({ length: pageCount }, (_, i) => i + 1).map((p) => (
+          {pageWindow(current, pageCount).map((p) => (
             <Pagination.Item key={p} active={p === current} onClick={() => setPage(p)}>
               {p}
             </Pagination.Item>
@@ -1358,7 +1359,7 @@ import {
   FaPlus,
   FaShower,
   FaCartShopping,
-  FaTimes,
+  FaXmark,
   FaTrash,
 } from 'react-icons/fa6';
 import type { Andamento, AndamentoInput } from '@gc/shared-types';
@@ -1376,6 +1377,7 @@ import {
   filterAndamenti,
   formatCosto,
   formatGiorno,
+  pageWindow,
   sortAndamenti,
   type SortDir,
   type SortKey,
@@ -1468,7 +1470,7 @@ export const AndamentoList = () => {
             }}
           />
           <button type="button" className="btn btn-outline-secondary" aria-label="Pulisci filtro" onClick={() => { setFiltro(''); setPage(1); }}>
-            <FaTimes />
+            <FaXmark />
           </button>
         </div>
         <button type="button" className="btn btn-primary" aria-label="Nuova voce di spesa" title="Nuova voce di spesa" onClick={() => setEditing({ titolo: 'Nuova voce di spesa', initial: emptyForm() })}>
@@ -1524,7 +1526,7 @@ export const AndamentoList = () => {
         <Pagination className="justify-content-center" aria-label="Paginazione">
           <Pagination.First disabled={current === 1} onClick={() => setPage(1)} />
           <Pagination.Prev disabled={current === 1} onClick={() => setPage(current - 1)} />
-          {Array.from({ length: pageCount }, (_, i) => i + 1).map((p) => (
+          {pageWindow(current, pageCount).map((p) => (
             <Pagination.Item key={p} active={p === current} onClick={() => setPage(p)}>
               {p}
             </Pagination.Item>
