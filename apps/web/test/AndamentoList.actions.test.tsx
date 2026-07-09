@@ -43,7 +43,13 @@ mock.module('../src/api/client', () => ({
     },
   },
 }));
-mock.module('sonner', () => ({ toast: { success: () => {}, warning: () => {}, error: () => {} } }));
+mock.module('sonner', () => ({
+  toast: { success: () => {}, warning: () => {}, error: () => {} },
+  // Toaster completes the mock: mock.module is process-global on CI's bun and
+  // mock.restore doesn't undo it, so this leaks into Layout.test.tsx, which imports
+  // { Toaster } from sonner — a partial mock there fails "Export 'Toaster' not found".
+  Toaster: () => null,
+}));
 afterAll(() => mock.restore());
 
 const renderList = async () => {
