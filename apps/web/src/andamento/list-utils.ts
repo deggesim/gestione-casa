@@ -22,6 +22,13 @@ export const filterAndamenti = (list: Andamento[], filtro: string): Andamento[] 
   );
 };
 
+// Up to `size` consecutive page numbers, windowed around `current` (legacy maxSize=5).
+export const pageWindow = (current: number, pageCount: number, size = 5): number[] => {
+  const count = Math.min(size, pageCount);
+  const start = Math.max(1, Math.min(current - Math.floor(size / 2), pageCount - count + 1));
+  return Array.from({ length: count }, (_, i) => start + i);
+};
+
 export const sortAndamenti = (list: Andamento[], key: SortKey, dir: SortDir): Andamento[] => {
   const sign = dir === 'asc' ? 1 : -1;
   return [...list].sort((a, b) => {

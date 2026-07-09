@@ -12,6 +12,7 @@ import {
   filterAndamenti,
   formatCosto,
   formatGiorno,
+  pageWindow,
   sortAndamenti,
   type SortDir,
   type SortKey,
@@ -120,7 +121,7 @@ export const AndamentoList = () => {
         <Pagination className="justify-content-center" aria-label="Paginazione">
           <Pagination.First disabled={current === 1} onClick={() => setPage(1)} />
           <Pagination.Prev disabled={current === 1} onClick={() => setPage(current - 1)} />
-          {Array.from({ length: pageCount }, (_, i) => i + 1).map((p) => (
+          {pageWindow(current, pageCount).map((p) => (
             <Pagination.Item key={p} active={p === current} onClick={() => setPage(p)}>
               {p}
             </Pagination.Item>

@@ -4,6 +4,7 @@ import {
   formatGiorno,
   filterAndamenti,
   sortAndamenti,
+  pageWindow,
 } from '../src/andamento/list-utils';
 
 const mk = (
@@ -58,4 +59,12 @@ test('sortAndamenti: giorno/descrizione is lexicographic and does not mutate inp
   const list = [mk({ id: 1, giorno: '2025-02-01' }), mk({ id: 2, giorno: '2025-01-01' })];
   expect(sortAndamenti(list, 'giorno', 'asc').map((a) => a.id)).toEqual([2, 1]);
   expect(list.map((a) => a.id)).toEqual([1, 2]); // original untouched
+});
+
+test('pageWindow returns up to 5 consecutive pages, clamped and centered', () => {
+  expect(pageWindow(1, 2)).toEqual([1, 2]); // fewer than window
+  expect(pageWindow(1, 8)).toEqual([1, 2, 3, 4, 5]); // start
+  expect(pageWindow(4, 8)).toEqual([2, 3, 4, 5, 6]); // centered
+  expect(pageWindow(8, 8)).toEqual([4, 5, 6, 7, 8]); // clamped at end
+  expect(pageWindow(1, 3)).toEqual([1, 2, 3]);
 });
