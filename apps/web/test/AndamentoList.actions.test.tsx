@@ -1,5 +1,5 @@
 import { test, expect, mock, afterAll } from 'bun:test';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
 
@@ -66,7 +66,9 @@ test('quick-add "Spesa" prefills descrizione "Spesa"', async () => {
   await renderList();
   fireEvent.click(screen.getByRole('button', { name: 'Spesa' }));
   await waitFor(() =>
-    expect((screen.getByLabelText(/descrizione/i) as HTMLInputElement).value).toBe('Spesa'),
+    expect(
+      (within(screen.getByRole('dialog')).getByLabelText(/descrizione/i) as HTMLInputElement).value,
+    ).toBe('Spesa'),
   );
 });
 
@@ -77,7 +79,7 @@ test('row delete → confirm → calls DELETE by id', async () => {
   fireEvent.click(screen.getByRole('button', { name: /elimina/i }));
   await waitFor(() => expect(screen.getByText('Elimina voce di spesa')).toBeDefined());
   // confirm button inside the dialog
-  fireEvent.click(screen.getByRole('button', { name: 'Elimina' }));
+  fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Elimina' }));
   await waitFor(() => expect(del).toHaveBeenCalledTimes(1));
   expect(byId).toHaveBeenCalledWith({ id: 1 });
 });

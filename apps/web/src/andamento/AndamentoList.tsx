@@ -74,18 +74,18 @@ export const AndamentoList = () => {
     setPage(1);
   };
   const active = (key: SortKey, dir: SortDir) => sortKey === key && sortDir === dir;
-  // title (not aria-label): an aria-label here would collide with getByLabelText
-  // queries against the form's field labels (e.g. "Descrizione") once the modal
-  // renders on top of the still-mounted table — title still gives these an
-  // accessible name (accname title fallback) without that collision.
   const sortIcons = (key: SortKey) => (
     <span className="ms-1">
-      <span role="button" title={`Ordina per ${key} crescente`} onClick={() => sortBy(key, 'asc')}>
+      <span
+        role="button"
+        aria-label={`Ordina per ${key} crescente`}
+        onClick={() => sortBy(key, 'asc')}
+      >
         {active(key, 'asc') ? <FaCircleChevronUp /> : <FaChevronUp />}
       </span>{' '}
       <span
         role="button"
-        title={`Ordina per ${key} decrescente`}
+        aria-label={`Ordina per ${key} decrescente`}
         onClick={() => sortBy(key, 'desc')}
       >
         {active(key, 'desc') ? <FaCircleChevronDown /> : <FaChevronDown />}
@@ -238,14 +238,11 @@ export const AndamentoList = () => {
                   >
                     <FaClone />
                   </button>
-                  {/* "Elimina riga" (not "Elimina"): the confirm modal's own button is
-                      also named "Elimina" verbatim, and the row stays mounted behind
-                      the modal, so an exact-name query must be able to tell them apart. */}
                   <button
                     type="button"
                     className="btn btn-danger btn-sm"
-                    aria-label="Elimina riga"
-                    title="Elimina riga"
+                    aria-label="Elimina"
+                    title="Elimina"
                     onClick={() => setToDelete(a)}
                   >
                     <FaTrash />

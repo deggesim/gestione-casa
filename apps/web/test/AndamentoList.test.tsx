@@ -20,6 +20,9 @@ const renderList = (data: unknown = rows) => {
     defaultOptions: { queries: { retry: false, staleTime: Infinity } },
   });
   qc.setQueryData(['andamento'], data);
+  // The component also calls useTipoSpesaList(); seed it so it resolves from cache
+  // (staleTime Infinity) instead of firing a real fetch (ECONNREFUSED noise).
+  qc.setQueryData(['tipo-spesa'], []);
   const wrapper = ({ children }: { children: ReactNode }) => (
     <QueryClientProvider client={qc}>{children}</QueryClientProvider>
   );
