@@ -1,5 +1,6 @@
 import { test, expect, beforeEach } from 'bun:test';
 import { treaty } from '@elysiajs/eden';
+import { CSRF_HEADER, CSRF_VALUE } from '@gc/shared-types';
 import { buildApp } from '../src/app';
 import { resetDb, seedFixtures } from './setup';
 
@@ -18,9 +19,15 @@ const cookieOf = (res: { headers: Headers }) =>
 test('Eden treaty resolves the typed API contract end-to-end', async () => {
   const api = treaty(buildApp());
 
-  // register + login (public)
-  await api.utente.post({ email: 'a@b.it', password: 'pw' });
-  const login = await api.utente.login.post({ email: 'a@b.it', password: 'pw' });
+  // register + login (public, mutating → CSRF header required)
+  await api.utente.post(
+    { email: 'a@b.it', password: 'pw' },
+    { headers: { [CSRF_HEADER]: CSRF_VALUE } },
+  );
+  const login = await api.utente.login.post(
+    { email: 'a@b.it', password: 'pw' },
+    { headers: { [CSRF_HEADER]: CSRF_VALUE } },
+  );
   expect(login.status).toBe(200);
   expect(login.data?.utente.email).toBe('a@b.it');
   const cookie = cookieOf(login.response);

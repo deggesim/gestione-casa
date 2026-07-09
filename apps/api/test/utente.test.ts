@@ -1,4 +1,5 @@
 import { test, expect, beforeEach } from 'bun:test';
+import { CSRF_HEADER, CSRF_VALUE } from '@gc/shared-types';
 import { buildApp } from '../src/app';
 import { resetDb } from './setup';
 
@@ -19,6 +20,7 @@ const send = (path: string, method: string, body?: unknown, cookie?: string) =>
       method,
       headers: {
         'content-type': 'application/json',
+        [CSRF_HEADER]: CSRF_VALUE,
         ...(cookie ? { cookie } : {}),
       },
       body: body === undefined ? undefined : JSON.stringify(body),
