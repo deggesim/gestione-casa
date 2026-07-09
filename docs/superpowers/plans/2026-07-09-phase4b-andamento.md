@@ -1049,13 +1049,14 @@ Expected: PASS (6 tests). If `formatCosto` fails on the space between amount and
 
 - [ ] **Step 5: Write the failing list render test**
 
-Create `apps/web/test/AndamentoList.test.tsx`:
+Create `apps/web/test/AndamentoList.test.tsx`. **No `mock.module` here** — seed the `['andamento']` cache so `useAndamentoList` resolves from cache without a fetch. This is the 4a-proven leak-free pattern; the read component never calls the client and never navigates, so nothing needs mocking. (The happy-dom preload's `PUBLIC_API_URL` default keeps the transitive `client.ts` import safe.)
 
 ```tsx
-import { test, expect, mock, afterAll } from 'bun:test';
+import { test, expect } from 'bun:test';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
+import { AndamentoList } from '../src/andamento/AndamentoList';
 
 const rows = Array.from({ length: 12 }, (_, i) => ({
   id: i + 1,
@@ -1065,35 +1066,27 @@ const rows = Array.from({ length: 12 }, (_, i) => ({
   tipoSpesa: { id: 1, descrizione: 'spesa' },
 }));
 
-mock.module('../src/api/client', () => ({
-  apiClient: {
-    andamento: { get: async () => ({ data: rows, error: null }) },
-    'tipo-spesa': { get: async () => ({ data: [{ id: 1, descrizione: 'spesa' }], error: null }) },
-  },
-}));
-mock.module('@tanstack/react-router', () => ({ useNavigate: () => () => {} }));
-afterAll(() => mock.restore());
-
-const renderList = async () => {
-  const { AndamentoList } = await import('../src/andamento/AndamentoList');
-  const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+const renderList = () => {
+  const qc = new QueryClient({
+    defaultOptions: { queries: { retry: false, staleTime: Infinity } },
+  });
+  qc.setQueryData(['andamento'], rows);
   const wrapper = ({ children }: { children: ReactNode }) => (
     <QueryClientProvider client={qc}>{children}</QueryClientProvider>
   );
   render(<AndamentoList />, { wrapper });
 };
 
-test('renders one page (10 rows) and shows pagination when >10 items', async () => {
-  await renderList();
-  await waitFor(() => expect(screen.getByText('Pane speciale')).toBeDefined());
-  // 10 data rows visible on page 1 (12 total)
+test('renders one page (10 rows) and shows pagination when >10 items', () => {
+  renderList();
+  expect(screen.getByText('Pane speciale')).toBeDefined();
   expect(screen.getAllByRole('row').length).toBeLessThanOrEqual(11); // 1 header + 10 body
   expect(screen.getByLabelText(/paginazione/i)).toBeDefined();
 });
 
 test('filter (>2 chars) narrows the table', async () => {
-  await renderList();
-  await waitFor(() => expect(screen.getByText('Pane speciale')).toBeDefined());
+  renderList();
+  expect(screen.getByText('Pane speciale')).toBeDefined();
   fireEvent.change(screen.getByPlaceholderText('Filtro'), { target: { value: 'pane' } });
   await waitFor(() => expect(screen.queryByText('voce 2')).toBeNull());
   expect(screen.getByText('Pane speciale')).toBeDefined();
@@ -1301,7 +1294,6 @@ mock.module('../src/api/client', () => ({
     'tipo-spesa': { get: async () => ({ data: [{ id: 1, descrizione: 'spesa' }, { id: 2, descrizione: 'carburante' }, { id: 7, descrizione: 'casa' }], error: null }) },
   },
 }));
-mock.module('@tanstack/react-router', () => ({ useNavigate: () => () => {} }));
 mock.module('sonner', () => ({ toast: { success: () => {}, warning: () => {}, error: () => {} } }));
 afterAll(() => mock.restore());
 
