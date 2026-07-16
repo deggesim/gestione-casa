@@ -3,6 +3,13 @@ import { afterEach } from 'bun:test';
 
 GlobalRegistrator.register();
 
+// Tests never hit the network (client calls are mocked or the query cache is
+// seeded), but importing src/api/client.ts evaluates src/config.ts, which throws
+// when PUBLIC_API_URL is unset. CI has no apps/web/.env, so provide a dummy here
+// to keep transitive client imports safe regardless of test-file load order
+// (otherwise import-safety would depend on a mock.module leak from another file).
+process.env.PUBLIC_API_URL ||= 'http://localhost';
+
 // `@testing-library/react` (via @testing-library/dom's `screen`) binds to the
 // global `document` at module-evaluation time — a static import here would be
 // hoisted above `register()` and permanently bind to an undefined document.

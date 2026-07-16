@@ -1,5 +1,8 @@
 import { test, expect, beforeEach } from 'bun:test';
+import { sql } from 'drizzle-orm';
+import { CSRF_HEADER, CSRF_VALUE } from '@gc/shared-types';
 import { buildApp } from '../src/app';
+import { db } from '../src/db/client';
 import { resetDb, seedFixtures } from './setup';
 
 let cookie = '';
@@ -19,14 +22,14 @@ const login = async () => {
   await buildApp().handle(
     new Request('http://localhost/utente', {
       method: 'POST',
-      headers: { 'content-type': 'application/json' },
+      headers: { 'content-type': 'application/json', [CSRF_HEADER]: CSRF_VALUE },
       body: JSON.stringify({ email: 'a@b.it', password: 'pw' }),
     }),
   );
   const res = await buildApp().handle(
     new Request('http://localhost/utente/login', {
       method: 'POST',
-      headers: { 'content-type': 'application/json' },
+      headers: { 'content-type': 'application/json', [CSRF_HEADER]: CSRF_VALUE },
       body: JSON.stringify({ email: 'a@b.it', password: 'pw' }),
     }),
   );
@@ -37,7 +40,7 @@ const req = (path: string, init: RequestInit = {}) =>
   buildApp().handle(
     new Request(`http://localhost${path}`, {
       ...init,
-      headers: { ...(init.headers ?? {}), cookie },
+      headers: { ...(init.headers ?? {}), cookie, [CSRF_HEADER]: CSRF_VALUE },
     }),
   );
 
@@ -55,6 +58,19 @@ test('GET /andamento returns entries sorted by giorno DESC, costo is a number', 
   expect(body[0].giorno).toMatch(/^\d{4}-\d{2}-\d{2}$/);
   expect(typeof body[0].costo).toBe('number');
   expect(body[0].tipoSpesa.descrizione).toBeDefined();
+});
+
+test('GET /andamento returns legacy rows with costo below 0.01 (response not over-validated)', async () => {
+  // Real migrated data has costo = 0.00 rows (e.g. a corrected entry). The create/update
+  // INPUT schema forbids < 0.01, but the response/domain schema must faithfully return
+  // stored data — insert directly (bypassing input validation) to simulate legacy data.
+  await db.execute(
+    sql`INSERT INTO gc.andamento (giorno, descrizione, costo, tipo_spesa_id) VALUES ('2020-01-01', 'voce legacy a costo zero', 0.00, 1)`,
+  );
+  const res = await req('/andamento');
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.some((a: { costo: number }) => a.costo === 0)).toBe(true);
 });
 
 test('POST /andamento creates an entry', async () => {
