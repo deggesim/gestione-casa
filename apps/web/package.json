@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "bun ./index.html --port 3000",
+    "dev": "bun --port 3000 ./index.html",
     "build": "bun build ./index.html --outdir dist --minify",
     "typecheck": "tsc --noEmit",
     "test": "bun test --preload ./happydom.ts"
@@ -22,6 +22,7 @@
     "react-bootstrap": "^2.10.10",
     "react-dom": "^19",
     "react-hook-form": "^7.81.0",
+    "react-icons": "^5.7.0",
     "sonner": "^2.0.7"
   },
   "devDependencies": {

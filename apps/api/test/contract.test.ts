@@ -1,5 +1,6 @@
 import { test, expect, beforeEach } from 'bun:test';
 import { treaty } from '@elysiajs/eden';
+import { CSRF_HEADER, CSRF_VALUE } from '@gc/shared-types';
 import { buildApp } from '../src/app';
 import { resetDb, seedFixtures } from './setup';
 
@@ -18,9 +19,15 @@ const cookieOf = (res: { headers: Headers }) =>
 test('Eden treaty resolves the typed API contract end-to-end', async () => {
   const api = treaty(buildApp());
 
-  // register + login (public)
-  await api.utente.post({ email: 'a@b.it', password: 'pw' });
-  const login = await api.utente.login.post({ email: 'a@b.it', password: 'pw' });
+  // register + login (public, mutating → CSRF header required)
+  await api.utente.post(
+    { email: 'a@b.it', password: 'pw' },
+    { headers: { [CSRF_HEADER]: CSRF_VALUE } },
+  );
+  const login = await api.utente.login.post(
+    { email: 'a@b.it', password: 'pw' },
+    { headers: { [CSRF_HEADER]: CSRF_VALUE } },
+  );
   expect(login.status).toBe(200);
   expect(login.data?.utente.email).toBe('a@b.it');
   const cookie = cookieOf(login.response);
@@ -30,6 +37,18 @@ test('Eden treaty resolves the typed API contract end-to-end', async () => {
   expect(list.status).toBe(200);
   expect(Array.isArray(list.data)).toBe(true);
   if (list.data && list.data.length) expect(typeof list.data[0]!.costo).toBe('number');
+
+  // Eden's JSON reviver turns date-looking strings into Date objects by DEFAULT: the wire
+  // says "2026-07-13" but the client hands back a Date at 02:00 local, which crashed the
+  // web's formatGiorno while both the response and the TypeBox type read as string.
+  // apps/web/src/api/client.ts pins parseDate:false — assert both sides of that seam.
+  if (list.data && list.data.length) expect(list.data[0]!.giorno).toBeInstanceOf(Date);
+  const strict = treaty(buildApp(), { parseDate: false });
+  const kept = await strict.andamento.get({ headers: { cookie } });
+  if (kept.data && kept.data.length) {
+    expect(typeof kept.data[0]!.giorno).toBe('string');
+    expect(kept.data[0]!.giorno).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+  }
 
   // guarded: GET /statistiche/spesa/:interval — value is a number
   const spesa = await api.statistiche.spesa({ interval: 'M' }).get({ headers: { cookie } });

@@ -3,6 +3,14 @@ import type { db as Db } from '../db/client';
 import { andamento, tipoSpesa } from '../db/schema';
 import type { Andamento, AndamentoInput } from '@gc/shared-types';
 
+// Normalize a PG `date` to the "YYYY-MM-DD" wire form. bun-sql hands it back as a JS Date
+// or a string — and under `bun --watch` as a full ISO timestamp, because `instanceof Date`
+// is unreliable across module realms (dev then serialized "...T00:00:00.000Z", breaking the
+// web's formatGiorno). Switch on typeof, never `instanceof`, so every shape collapses to the
+// date and the API contract (giorno = "YYYY-MM-DD") always holds.
+export const toYmd = (giorno: string | Date): string =>
+  typeof giorno === 'string' ? giorno.slice(0, 10) : giorno.toISOString().slice(0, 10);
+
 const toAndamento = (row: {
   id: number;
   giorno: string | Date;
@@ -12,9 +20,7 @@ const toAndamento = (row: {
   tsDescrizione: string;
 }): Andamento => ({
   id: row.id,
-  // bun-sql returns PG `date` as a Date; normalize to the "YYYY-MM-DD" wire string (parity + honest type).
-  // bun-sql parses date as UTC midnight, so toISOString().slice(0,10) yields the correct calendar day.
-  giorno: row.giorno instanceof Date ? row.giorno.toISOString().slice(0, 10) : row.giorno,
+  giorno: toYmd(row.giorno),
   descrizione: row.descrizione,
   costo: Number(row.costo),
   tipoSpesa: { id: row.tipoSpesaId, descrizione: row.tsDescrizione },

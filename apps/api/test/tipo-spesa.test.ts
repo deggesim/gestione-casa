@@ -1,4 +1,5 @@
 import { test, expect, beforeEach } from 'bun:test';
+import { CSRF_HEADER, CSRF_VALUE } from '@gc/shared-types';
 import { buildApp } from '../src/app';
 import { resetDb, seedFixtures } from './setup';
 
@@ -17,14 +18,14 @@ const login = async () => {
   await buildApp().handle(
     new Request('http://localhost/utente', {
       method: 'POST',
-      headers: { 'content-type': 'application/json' },
+      headers: { 'content-type': 'application/json', [CSRF_HEADER]: CSRF_VALUE },
       body: JSON.stringify({ email: 'a@b.it', password: 'pw' }),
     }),
   );
   const res = await buildApp().handle(
     new Request('http://localhost/utente/login', {
       method: 'POST',
-      headers: { 'content-type': 'application/json' },
+      headers: { 'content-type': 'application/json', [CSRF_HEADER]: CSRF_VALUE },
       body: JSON.stringify({ email: 'a@b.it', password: 'pw' }),
     }),
   );

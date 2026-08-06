@@ -4,3 +4,4 @@ export * from './andamento';
 export * from './utente';
 export * from './statistica';
 export * from './common';
+export * from './csrf';
