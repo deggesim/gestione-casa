@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "bun ./index.html --port 3000",
+    "dev": "bun --port 3000 ./index.html",
     "build": "bun build ./index.html --outdir dist --minify",
     "typecheck": "tsc --noEmit",
     "test": "bun test --preload ./happydom.ts"

@@ -9,10 +9,18 @@
       "request": "launch",
       "name": "Gestione Casa API",
       "program": "src/index.ts",
+      // cwd matters: Bun auto-loads apps/api/.env from it, and env.ts requires DATABASE_URL/JWT_SECRET.
       "cwd": "${workspaceFolder}/apps/api",
-      "watchMode": "hot",
-      "stopOnEntry": false,
-      "noDebug": false
+      // "hot" (not true/--watch): reloads in-process so the inspector connection survives a save.
+      "watchMode": "hot"
+    },
+    {
+      "type": "chrome",
+      "request": "launch",
+      "name": "Gestione Casa Web",
+      "url": "http://localhost:3000",
+      "webRoot": "${workspaceFolder}/apps/web"
+      // Start the dev server first: bun run --filter '@gc/web' dev
     }
   ]
 }
