@@ -4,6 +4,7 @@ import { Layout } from '../layout/Layout';
 import { LoginForm } from '../login/LoginForm';
 import { HomePage } from './home.route';
 import { requireAuth } from '../auth/require-auth';
+import { SpeseMedie } from '../statistiche/SpeseMedie';
 
 const ErrorPage = () => <h2 className="mt-3">Pagina di errore</h2>;
 
@@ -22,6 +23,14 @@ export const buildRouter = (queryClient: QueryClient) => {
     beforeLoad: requireAuth(queryClient),
     component: HomePage,
   });
+  // Statistiche routes are flat siblings, not nested: in the legacy the parent
+  // hid its own tables whenever a child was active, so there is nothing to share.
+  const statisticheRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/statistiche',
+    beforeLoad: requireAuth(queryClient),
+    component: SpeseMedie,
+  });
   const indexRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: '/',
@@ -35,7 +44,13 @@ export const buildRouter = (queryClient: QueryClient) => {
     component: ErrorPage,
   });
 
-  const routeTree = rootRoute.addChildren([indexRoute, loginRoute, homeRoute, errorRoute]);
+  const routeTree = rootRoute.addChildren([
+    indexRoute,
+    loginRoute,
+    homeRoute,
+    statisticheRoute,
+    errorRoute,
+  ]);
   return createRouter({ routeTree, defaultNotFoundComponent: ErrorPage });
 };
 
