@@ -81,7 +81,7 @@ Nuovo slice `apps/web/src/statistiche/`, con la stessa forma di `andamento/` (ho
 File modificati:
 
 - `apps/web/src/routes/router.tsx` — 6 route nuove, **piatte** (non annidate), tutte con `beforeLoad: requireAuth(queryClient)`.
-- `apps/web/src/layout/Layout.tsx` — `NavDropdown` "Statistiche" con le 6 voci (+ divisore dopo la prima, come nel legacy).
+- `apps/web/src/layout/Layout.tsx` — dropdown "Statistiche" con le 6 voci (+ divisore dopo la prima, come nel legacy).
 - `apps/web/src/styles.css` — porting di `.fieldset`, `.legend`, `.barre-orizzontali-mensile`, `.barre-orizzontali-annuale`, `.torta` da `gc-frontend/src/styles.scss`.
 - `apps/web/package.json` + `bun.lock` — `recharts` e il suo peer `react-is`.
 
@@ -169,7 +169,9 @@ Con `M` i dati sono fino a 48 mesi: la classe `.barre-orizzontali-mensile` dà a
 
 ## 7. Navigazione
 
-`Layout.tsx` guadagna un `NavDropdown` (già disponibile: `react-bootstrap` è dipendenza dal 4b) allineato a sinistra, visibile **solo da autenticati** (`me.data`), con le 6 voci nell'ordine legacy: *Spese medie* — divisore — *Spese frequenti*, *Spesa*, *Carburante*, *Bollette*, *Casa*.
+`Layout.tsx` guadagna un dropdown "Statistiche" allineato a sinistra, visibile **solo da autenticati** (`me.data`), con le 6 voci nell'ordine legacy: *Spese medie* — divisore — *Spese frequenti*, *Spesa*, *Carburante*, *Bollette*, *Casa*.
+
+Realizzato con **markup Bootstrap a mano + `useState`** per l'apertura (`className={'dropdown-menu' + (open ? ' show' : '')}`), non con `NavDropdown` di `react-bootstrap`. Due motivi: la navbar attuale è già markup Bootstrap scritto a mano (coerenza), e `NavDropdown` monta Popper per il posizionamento, che sotto happy-dom rende il test del menù fragile. Costo: ~15 righe.
 
 L'header attuale ha solo brand + tema + logout; il dropdown è **indispensabile** perché senza di esso le sei pagine sono irraggiungibili dall'interfaccia.
 
