@@ -8,6 +8,7 @@
   },
   "scripts": {
     "dev": "bun run --watch src/index.ts",
+    "dev:debug": "bun run --inspect --hot src/index.ts",
     "start": "bun run src/index.ts",
     "typecheck": "tsc --noEmit",
     "db:pull": "drizzle-kit pull"

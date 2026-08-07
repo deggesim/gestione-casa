@@ -6,6 +6,8 @@
     "packages/*"
   ],
   "scripts": {
+    "dev": "./dev.sh",
+    "dev:debug": "./dev.sh --debug",
     "typecheck": "bun run --filter '*' typecheck",
     "test": "bun test apps/api packages/shared-types && bun run --filter '@gc/web' test",
     "lint": "prettier --check ."

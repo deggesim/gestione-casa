@@ -20,7 +20,7 @@ Run from the repo root unless noted.
 - `bun run lint` — `prettier --check .` (see `.prettierignore`: skips `*.md`, `docs`, `bun.lock`). Use `bunx prettier --write .` to fix.
 - `bun run typecheck` — `tsc --noEmit` across every workspace (`--filter '*'`).
 - `bun run test` — runs `apps/api` + `packages/shared-types` (`bun test`) then `apps/web` (happy-dom).
-- **Dev servers** (start API first): `bun run --filter '@gc/api' dev` (port 5000, `--watch`), then `bun run --filter '@gc/web' dev` (port 3000). Or `cd` into the app and `bun run dev`.
+- **Dev servers** — `bun run dev` (or `./dev.sh`) starts both: API on 5000 (`--watch`) and web on 3000, output prefixed per package. `bun run dev:debug` runs the API under Bun's inspector instead (prints a `debug.bun.sh` URL; uses `--hot` rather than `--watch` so the inspector connection survives a save, same as `.vscode/launch.json`). To start one alone: `bun run --filter '@gc/api' dev`, or `cd` into the app and `bun run dev`.
 - **db:pull** — `bun run --filter '@gc/api' db:pull` regenerates `apps/api/src/db/schema.ts` from a live DB (drizzle-kit).
 
 ### Running tests
