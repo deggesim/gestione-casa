@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "bun --port 3000 ./index.html",
-    "build": "PUBLIC_ENABLE_SW=${PUBLIC_ENABLE_SW:-false} bun build ./index.html --outdir dist --minify --env 'PUBLIC_*' && cp -R public/icons public/sw.js dist/",
+    "build": "PUBLIC_ENABLE_SW=${PUBLIC_ENABLE_SW:-false} bun build ./index.html --outdir dist --minify --env 'PUBLIC_*' --public-path=/ && cp -R public/icons public/sw.js dist/",
     "preview": "bun run build && bun serve.ts",
     "typecheck": "tsc --noEmit",
     "test": "bun test --preload ./happydom.ts"

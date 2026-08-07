@@ -41,6 +41,7 @@ DATABASE_URL=postgres://<user>:<pw>@localhost:5432/<db> JWT_SECRET=x bun test ap
   - `apps/api`: `DATABASE_URL`, `JWT_SECRET`, `CORS_ORIGIN` (+ optional `PORT`, `COOKIE_SECURE`, `COOKIE_DOMAIN`).
   - `apps/web`: `PUBLIC_API_URL`.
 - **Frontend env vars must be prefixed `PUBLIC_*`.** The **dev server** inlines them via `apps/web/bunfig.toml` (`[serve.static] env = "PUBLIC_*"`); **`bun build` does not** — its `--env` flag defaults to `disable`, so the `build` script passes `--env 'PUBLIC_*'` explicitly. `--env` only substitutes variables that are actually *set*: an unset `PUBLIC_*` var stays in the bundle as a literal `process.env.X`, and since `process` does not exist in the browser it throws `ReferenceError: process is not defined` at load. That is why the `build` script gives `PUBLIC_ENABLE_SW` a shell default.
+- **`bun build` needs `--public-path=/`.** By default it writes the hashed asset links into `index.html` as *relative* URLs (`./index-<hash>.js`). Since the app is an SPA whose deep routes are served the same `index.html`, the browser resolves those against the current directory: on `/statistiche/spesa` it asks for `/statistiche/index-<hash>.js`, gets the SPA fallback HTML back, and renders a blank page. Every route with a slash beyond the first breaks on refresh or deep link. The dev server is immune (it serves assets from an absolute `/_bun/asset/…`), so this only ever appears in a built app.
 
 ## Architecture
 
