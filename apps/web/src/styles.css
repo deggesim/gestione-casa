@@ -33,3 +33,13 @@ body {
   margin-bottom: auto;
   font-size: 15px;
 }
+
+/* Chart heights copied from the legacy styles.scss. Monthly bars can be 48 rows,
+   hence three viewport heights of scroll. */
+.barre-orizzontali-mensile {
+  height: calc((100vh - 210px) * 3);
+}
+
+.barre-orizzontali-annuale {
+  height: calc(100vh - 210px);
+}

@@ -5,6 +5,7 @@ import { LoginForm } from '../login/LoginForm';
 import { HomePage } from './home.route';
 import { requireAuth } from '../auth/require-auth';
 import { SpeseMedie } from '../statistiche/SpeseMedie';
+import { BarreStatistica } from '../statistiche/BarreStatistica';
 
 const ErrorPage = () => <h2 className="mt-3">Pagina di errore</h2>;
 
@@ -31,6 +32,15 @@ export const buildRouter = (queryClient: QueryClient) => {
     beforeLoad: requireAuth(queryClient),
     component: SpeseMedie,
   });
+  // The four bar screens differ only by which endpoint they read.
+  const barreRoutes = (['spesa', 'carburante', 'bolletta', 'casa'] as const).map((kind) =>
+    createRoute({
+      getParentRoute: () => rootRoute,
+      path: `/statistiche/${kind}`,
+      beforeLoad: requireAuth(queryClient),
+      component: () => <BarreStatistica kind={kind} />,
+    }),
+  );
   const indexRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: '/',
@@ -49,6 +59,7 @@ export const buildRouter = (queryClient: QueryClient) => {
     loginRoute,
     homeRoute,
     statisticheRoute,
+    ...barreRoutes,
     errorRoute,
   ]);
   return createRouter({ routeTree, defaultNotFoundComponent: ErrorPage });
