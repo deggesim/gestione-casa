@@ -4,6 +4,9 @@ import { Layout } from '../layout/Layout';
 import { LoginForm } from '../login/LoginForm';
 import { HomePage } from './home.route';
 import { requireAuth } from '../auth/require-auth';
+import { SpeseMedie } from '../statistiche/SpeseMedie';
+import { BarreStatistica } from '../statistiche/BarreStatistica';
+import { SpeseFrequenti } from '../statistiche/SpeseFrequenti';
 
 const ErrorPage = () => <h2 className="mt-3">Pagina di errore</h2>;
 
@@ -22,6 +25,29 @@ export const buildRouter = (queryClient: QueryClient) => {
     beforeLoad: requireAuth(queryClient),
     component: HomePage,
   });
+  // Statistiche routes are flat siblings, not nested: in the legacy the parent
+  // hid its own tables whenever a child was active, so there is nothing to share.
+  const statisticheRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/statistiche',
+    beforeLoad: requireAuth(queryClient),
+    component: SpeseMedie,
+  });
+  const speseFrequentiRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/statistiche/spese-frequenti',
+    beforeLoad: requireAuth(queryClient),
+    component: SpeseFrequenti,
+  });
+  // The four bar screens differ only by which endpoint they read.
+  const barreRoutes = (['spesa', 'carburante', 'bolletta', 'casa'] as const).map((kind) =>
+    createRoute({
+      getParentRoute: () => rootRoute,
+      path: `/statistiche/${kind}`,
+      beforeLoad: requireAuth(queryClient),
+      component: () => <BarreStatistica kind={kind} />,
+    }),
+  );
   const indexRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: '/',
@@ -35,7 +61,15 @@ export const buildRouter = (queryClient: QueryClient) => {
     component: ErrorPage,
   });
 
-  const routeTree = rootRoute.addChildren([indexRoute, loginRoute, homeRoute, errorRoute]);
+  const routeTree = rootRoute.addChildren([
+    indexRoute,
+    loginRoute,
+    homeRoute,
+    statisticheRoute,
+    speseFrequentiRoute,
+    ...barreRoutes,
+    errorRoute,
+  ]);
   return createRouter({ routeTree, defaultNotFoundComponent: ErrorPage });
 };
 
