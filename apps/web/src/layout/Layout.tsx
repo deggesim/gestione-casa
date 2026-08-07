@@ -146,7 +146,11 @@ export const Layout = () => {
       <Spinner />
       <Toaster richColors position="top-right" />
 
-      <ProfiloModal show={profiloOpen} onHide={() => setProfiloOpen(false)} />
+      {/* Mounted only while open, like AndamentoForm: Layout is the root route's shell, so
+          anything rendered unconditionally here mounts once — before login — and never
+          again. react-hook-form reads defaultValues on its first render only, so a
+          permanently mounted ProfiloModal would capture an empty email forever. */}
+      {profiloOpen && <ProfiloModal show onHide={() => setProfiloOpen(false)} />}
 
       <Modal show={update.updateReady} onHide={update.dismiss}>
         <Modal.Header>

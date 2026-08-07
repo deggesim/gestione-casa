@@ -58,8 +58,13 @@ self.addEventListener('fetch', (event) => {
     event.respondWith(
       fetch(request)
         .then((response) => {
-          const copy = response.clone();
-          caches.open(CACHE).then((cache) => cache.put(SHELL, copy));
+          // Only a successful navigation may replace the shell. A proxy's 502 page
+          // resolves the fetch normally, so without this check it would be cached as the
+          // app shell and then served to every later offline visit.
+          if (response.ok) {
+            const copy = response.clone();
+            caches.open(CACHE).then((cache) => cache.put(SHELL, copy));
+          }
           return response;
         })
         .catch(() => caches.match(SHELL).then((hit) => hit ?? Response.error())),

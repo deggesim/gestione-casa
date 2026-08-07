@@ -1,5 +1,5 @@
 import { test, expect, afterEach, afterAll, mock } from 'bun:test';
-import { render, screen, cleanup, fireEvent, within } from '@testing-library/react';
+import { render, screen, cleanup, fireEvent, waitFor, within } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { routerMock } from './router-mock';
 
@@ -26,11 +26,14 @@ const renderLayout = (meData?: { id: number }) => {
     defaultOptions: { queries: { staleTime: Infinity, retry: false } },
   });
   if (meData) qc.setQueryData(['me'], meData);
-  return render(
-    <QueryClientProvider client={qc}>
-      <Layout />
-    </QueryClientProvider>,
-  );
+  return {
+    ...render(
+      <QueryClientProvider client={qc}>
+        <Layout />
+      </QueryClientProvider>,
+    ),
+    qc,
+  };
 };
 
 test('renders the brand + theme toggle and hides Logout when logged out', () => {
@@ -95,4 +98,24 @@ test('clicking a statistiche entry closes the mobile menu', () => {
 
   const collapse = container.querySelector('.navbar-collapse');
   expect(collapse?.classList.contains('show')).toBe(false);
+});
+
+// Layout is the root route's shell: it mounts once, while the user is still anonymous on
+// /login, and never remounts when they log in. react-hook-form reads defaultValues on its
+// first render only, so a permanently mounted ProfiloModal would capture an empty email
+// and keep it for the whole session. Seeding ['me'] after render is what production does.
+test('the profilo modal prefills the email of a user who logged in after mount', async () => {
+  const { qc } = renderLayout();
+  qc.setQueryData(['me'], { id: 1, email: 'utente@example.it' });
+
+  const profilo = await waitFor(() => screen.getByRole('button', { name: /profilo utente/i }));
+  fireEvent.click(profilo);
+
+  // Asserted as "not empty" rather than against the seeded address: the ['me'] fetch that
+  // useMe starts at mount is still in flight when the seed lands, and useAuth.test.tsx
+  // mocks the api client process-globally, so in a full-suite run that fetch can resolve
+  // with its own user and win the race. Either address is a legitimate current user; the
+  // regression this guards against produces an empty field, whatever the cache holds.
+  const email = (await waitFor(() => screen.getByLabelText('Email'))) as HTMLInputElement;
+  expect(email.value).not.toBe('');
 });
