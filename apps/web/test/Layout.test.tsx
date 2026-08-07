@@ -1,5 +1,5 @@
 import { test, expect, afterEach, afterAll, mock } from 'bun:test';
-import { render, screen, cleanup } from '@testing-library/react';
+import { render, screen, cleanup, fireEvent, within } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
 
@@ -46,4 +46,32 @@ test('renders the brand + theme toggle and hides Logout when logged out', () => 
 test('shows the Logout button when logged in', () => {
   renderLayout({ id: 1 });
   expect(screen.getByRole('button', { name: 'Logout' })).toBeDefined();
+});
+
+test('hides the Statistiche menu when logged out', () => {
+  renderLayout();
+  expect(screen.queryByRole('button', { name: /statistiche/i })).toBeNull();
+});
+
+test('opens the Statistiche menu with the six legacy entries', () => {
+  const { container } = renderLayout({ id: 1 });
+  const menu = container.querySelector('.dropdown-menu');
+  if (!menu) throw new Error('dropdown menu not rendered');
+  expect(menu.classList.contains('show')).toBe(false);
+
+  fireEvent.click(screen.getByRole('button', { name: /statistiche/i }));
+
+  expect(menu.classList.contains('show')).toBe(true);
+  // Scoped to the menu: "Spesa" would otherwise be ambiguous against the other
+  // entries if any of them ever became a substring match.
+  for (const voce of [
+    'Spese medie',
+    'Spese frequenti',
+    'Spesa',
+    'Carburante',
+    'Bollette',
+    'Casa',
+  ]) {
+    expect(within(menu as HTMLElement).getByText(voce)).toBeDefined();
+  }
 });
