@@ -14,6 +14,7 @@ import { useSwUpdate } from '../pwa/useSwUpdate';
 import { useTheme } from '../theme/useTheme';
 import { useMe, useLogout } from '../auth/useAuth';
 import { ProfiloModal } from '../utente/ProfiloModal';
+import { Breadcrumb } from './Breadcrumb';
 import { Spinner } from './Spinner';
 
 // Legacy header dropdown. Note that "Bollette" (plural label) points at the
@@ -28,7 +29,7 @@ const STAT_LINKS = [
 ] as const;
 
 // App shell: fixed navbar (brand → /home, statistiche menu, theme toggle, profilo
-// and logout when logged in) + routed outlet. Breadcrumb arrives with Task 6.
+// and logout when logged in) + breadcrumb + routed outlet.
 export const Layout = () => {
   const { isDark, toggle } = useTheme();
   const me = useMe();
@@ -138,6 +139,7 @@ export const Layout = () => {
           </div>
         </div>
       </nav>
+      <Breadcrumb />
       <div className="container-fluid">
         <Outlet />
       </div>
