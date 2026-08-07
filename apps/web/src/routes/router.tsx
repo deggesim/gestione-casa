@@ -6,6 +6,7 @@ import { HomePage } from './home.route';
 import { requireAuth } from '../auth/require-auth';
 import { SpeseMedie } from '../statistiche/SpeseMedie';
 import { BarreStatistica } from '../statistiche/BarreStatistica';
+import { SpeseFrequenti } from '../statistiche/SpeseFrequenti';
 
 const ErrorPage = () => <h2 className="mt-3">Pagina di errore</h2>;
 
@@ -31,6 +32,12 @@ export const buildRouter = (queryClient: QueryClient) => {
     path: '/statistiche',
     beforeLoad: requireAuth(queryClient),
     component: SpeseMedie,
+  });
+  const speseFrequentiRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/statistiche/spese-frequenti',
+    beforeLoad: requireAuth(queryClient),
+    component: SpeseFrequenti,
   });
   // The four bar screens differ only by which endpoint they read.
   const barreRoutes = (['spesa', 'carburante', 'bolletta', 'casa'] as const).map((kind) =>
@@ -59,6 +66,7 @@ export const buildRouter = (queryClient: QueryClient) => {
     loginRoute,
     homeRoute,
     statisticheRoute,
+    speseFrequentiRoute,
     ...barreRoutes,
     errorRoute,
   ]);

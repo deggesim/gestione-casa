@@ -43,3 +43,7 @@ body {
 .barre-orizzontali-annuale {
   height: calc(100vh - 210px);
 }
+
+.torta {
+  height: calc(100vh - 210px);
+}
