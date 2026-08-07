@@ -33,6 +33,7 @@ DATABASE_URL=postgres://<user>:<pw>@localhost:5432/<db> JWT_SECRET=x bun test ap
 
 - ⚠️ `apps/api/test/setup.ts` (preloaded via root `bunfig.toml` `[test]`) **TRUNCATEs the `gc` schema** on `resetDb()` — point `DATABASE_URL` at a disposable test DB, **never the dev DB**. It also creates the schema idempotently and exposes `resetDb()` / `seedFixtures()`.
 - Web tests: `bun run --filter '@gc/web' test` (preloads `apps/web/happydom.ts` for a DOM).
+- ⚠️ **Always `waitFor` a *presence*, never an *absence*.** `await waitFor(() => expect(screen.queryByText(x)).toBeNull())` costs a flat ~5s under happy-dom and blows the 5s per-test timeout, even though its callback passes on the second poll: RTL's async wrapper ends on a `setTimeout(0)` that nothing wakes once the DOM has stopped mutating. Wait for the positive signal instead (an element appearing, a button becoming enabled), then assert the absence synchronously — see `test/ProfiloModal.test.tsx`.
 
 ## Configuration (strict convention)
 

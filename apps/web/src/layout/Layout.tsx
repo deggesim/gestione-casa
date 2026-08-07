@@ -6,6 +6,7 @@ import { Toaster, toast } from 'sonner';
 import { useSwUpdate } from '../pwa/useSwUpdate';
 import { useTheme } from '../theme/useTheme';
 import { useMe, useLogout } from '../auth/useAuth';
+import { ProfiloModal } from '../utente/ProfiloModal';
 import { Spinner } from './Spinner';
 
 // Legacy header dropdown. Note that "Bollette" (plural label) points at the
@@ -19,8 +20,8 @@ const STAT_LINKS = [
   { to: '/statistiche/casa', label: 'Casa' },
 ] as const;
 
-// App shell: fixed navbar (brand → /home, statistiche menu, theme toggle, logout
-// when logged in) + routed outlet. Breadcrumb and profilo arrive in 4d.
+// App shell: fixed navbar (brand → /home, statistiche menu, theme toggle, profilo
+// and logout when logged in) + routed outlet. Breadcrumb arrives with Task 6.
 export const Layout = () => {
   const { isDark, toggle } = useTheme();
   const me = useMe();
@@ -30,6 +31,7 @@ export const Layout = () => {
   // rest of this navbar is plain markup, and NavDropdown mounts Popper, which makes
   // the menu awkward to assert on under happy-dom.
   const [statsOpen, setStatsOpen] = useState(false);
+  const [profiloOpen, setProfiloOpen] = useState(false);
   const update = useSwUpdate();
 
   const onLogout = () =>
@@ -86,9 +88,14 @@ export const Layout = () => {
             {isDark ? '☀' : '☾'}
           </button>
           {me.data ? (
-            <button className="btn btn-outline-light btn-sm" onClick={onLogout}>
-              Logout
-            </button>
+            <>
+              <button className="btn btn-outline-light btn-sm" onClick={() => setProfiloOpen(true)}>
+                Profilo Utente
+              </button>
+              <button className="btn btn-outline-light btn-sm" onClick={onLogout}>
+                Logout
+              </button>
+            </>
           ) : null}
         </div>
       </nav>
@@ -97,6 +104,8 @@ export const Layout = () => {
       </div>
       <Spinner />
       <Toaster richColors position="top-right" />
+
+      <ProfiloModal show={profiloOpen} onHide={() => setProfiloOpen(false)} />
 
       <Modal show={update.updateReady} onHide={update.dismiss}>
         <Modal.Header>
