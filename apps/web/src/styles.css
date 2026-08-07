@@ -13,3 +13,23 @@ body {
   justify-content: center;
   background: rgba(0, 0, 0, 0.15);
 }
+
+/* Statistiche: the radio group box (was .fieldset/.legend in the legacy styles.scss).
+   Minty's $primary is #78c2ad; transparentize(..., 0.7) leaves 30% alpha. */
+.fieldset {
+  background: rgba(120, 194, 173, 0.3);
+  margin: 1rem;
+  border-radius: 0.5rem;
+  padding: 0.35em 0.625em 0;
+  border: 1px solid var(--bs-border-color);
+}
+
+.fieldset .legend {
+  border: 1px solid var(--bs-border-color);
+  border-radius: 0.5rem;
+  padding-left: 0.5rem;
+  padding-right: 0.5rem;
+  width: inherit;
+  margin-bottom: auto;
+  font-size: 15px;
+}
