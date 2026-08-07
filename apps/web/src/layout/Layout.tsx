@@ -1,7 +1,9 @@
 import { Fragment, useState } from 'react';
 import { Link, Outlet, useNavigate } from '@tanstack/react-router';
+import { Modal } from 'react-bootstrap';
 import { FaChartPie } from 'react-icons/fa6';
 import { Toaster, toast } from 'sonner';
+import { useSwUpdate } from '../pwa/useSwUpdate';
 import { useTheme } from '../theme/useTheme';
 import { useMe, useLogout } from '../auth/useAuth';
 import { Spinner } from './Spinner';
@@ -28,6 +30,7 @@ export const Layout = () => {
   // rest of this navbar is plain markup, and NavDropdown mounts Popper, which makes
   // the menu awkward to assert on under happy-dom.
   const [statsOpen, setStatsOpen] = useState(false);
+  const update = useSwUpdate();
 
   const onLogout = () =>
     logout.mutate(undefined, {
@@ -94,6 +97,20 @@ export const Layout = () => {
       </div>
       <Spinner />
       <Toaster richColors position="top-right" />
+
+      <Modal show={update.updateReady} onHide={update.dismiss}>
+        <Modal.Header>
+          <Modal.Title>Aggiornamento app disponibile</Modal.Title>
+        </Modal.Header>
+        <Modal.Footer>
+          <button type="button" className="btn btn-primary" onClick={update.applyUpdate}>
+            Aggiorna
+          </button>
+          <button type="button" className="btn btn-secondary" onClick={update.dismiss}>
+            Annulla
+          </button>
+        </Modal.Footer>
+      </Modal>
     </>
   );
 };
