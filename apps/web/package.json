@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "bun --port 3000 ./index.html",
-    "build": "bun build ./index.html --outdir dist --minify",
+    "build": "PUBLIC_ENABLE_SW=${PUBLIC_ENABLE_SW:-false} bun build ./index.html --outdir dist --minify --env 'PUBLIC_*'",
+    "preview": "bun run build && bun serve.ts",
     "typecheck": "tsc --noEmit",
     "test": "bun test --preload ./happydom.ts"
   },

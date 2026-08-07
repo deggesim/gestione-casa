@@ -39,7 +39,7 @@ DATABASE_URL=postgres://<user>:<pw>@localhost:5432/<db> JWT_SECRET=x bun test ap
 - **All runtime config lives in per-app `.env`** (`apps/{api,web}/.env`), gitignored and auto-loaded by Bun from each app's cwd. **Never hardcode config in source** (no default URLs/ports/secrets) — read from `process.env` and validate with the `required()` helper in `apps/api/src/env.ts`. Committed `.env.example` files list the required vars.
   - `apps/api`: `DATABASE_URL`, `JWT_SECRET`, `CORS_ORIGIN` (+ optional `PORT`, `COOKIE_SECURE`, `COOKIE_DOMAIN`).
   - `apps/web`: `PUBLIC_API_URL`.
-- **Frontend env vars must be prefixed `PUBLIC_*`.** Bun inlines only those into the browser bundle at build time via `apps/web/bunfig.toml` (`[serve.static] env = "PUBLIC_*"`). `process` does not exist in the browser, so referencing an unset or unprefixed `process.env.*` throws `ReferenceError: process is not defined`.
+- **Frontend env vars must be prefixed `PUBLIC_*`.** The **dev server** inlines them via `apps/web/bunfig.toml` (`[serve.static] env = "PUBLIC_*"`); **`bun build` does not** — its `--env` flag defaults to `disable`, so the `build` script passes `--env 'PUBLIC_*'` explicitly. `--env` only substitutes variables that are actually *set*: an unset `PUBLIC_*` var stays in the bundle as a literal `process.env.X`, and since `process` does not exist in the browser it throws `ReferenceError: process is not defined` at load. That is why the `build` script gives `PUBLIC_ENABLE_SW` a shell default.
 
 ## Architecture
 
