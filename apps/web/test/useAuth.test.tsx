@@ -1,4 +1,4 @@
-import { test, expect, mock, beforeEach, afterAll } from 'bun:test';
+import { test, expect, mock } from 'bun:test';
 import { renderHook, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
@@ -14,17 +14,11 @@ mock.module('../src/api/client', () => ({
   },
 }));
 
-// mock.module is process-global in Bun — restore it so this mock can't leak
-// into other test files that import '../src/api/client'.
-afterAll(() => mock.restore());
-
 const wrapper =
   (qc: QueryClient) =>
   ({ children }: { children: ReactNode }) => (
     <QueryClientProvider client={qc}>{children}</QueryClientProvider>
   );
-
-beforeEach(() => {});
 
 test('useMe resolves the current user from GET /utente/me', async () => {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
