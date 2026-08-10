@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "bun --port 3000 ./index.html",
-    "build": "bun build ./index.html --outdir dist --minify --env 'PUBLIC_*' --public-path=/ && cp -R public/icons public/sw.js dist/",
+    "build": "rm -rf dist && bun build ./index.html --outdir dist --minify --env 'PUBLIC_*' --public-path=/ && cp -R public/icons public/sw.js dist/",
+    "smoke": "bun run build && bun smoke.ts",
     "preview": "bun run build && bun serve.ts",
     "typecheck": "tsc --noEmit",
     "test": "bun test --preload ./happydom.ts"

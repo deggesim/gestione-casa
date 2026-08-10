@@ -21,6 +21,10 @@ jobs:
     env:
       DATABASE_URL: postgres://gc:gc@localhost:5432/gc
       JWT_SECRET: ci-secret
+      # The web build inlines this into the bundle; without it the app throws at boot and
+      # the smoke step below fails for the wrong reason. Never contacted — nothing in CI
+      # makes a request.
+      PUBLIC_API_URL: http://localhost:5000
     steps:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v2
@@ -30,3 +34,7 @@ jobs:
       - run: bun run lint
       - run: bun run typecheck
       - run: bun run test
+      # Builds the web app and boots the emitted bundle. Both production bugs shipped so
+      # far (relative asset URLs, an un-inlined PUBLIC_* var) built successfully and broke
+      # only at load, so `bun run build` alone would have caught neither — see smoke.ts.
+      - run: bun run --filter '@gc/web' smoke
