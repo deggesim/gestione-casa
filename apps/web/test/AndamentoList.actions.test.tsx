@@ -1,4 +1,4 @@
-import { test, expect, mock, afterAll } from 'bun:test';
+import { test, expect, mock } from 'bun:test';
 import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
@@ -33,24 +33,11 @@ mock.module('../src/api/client', () => ({
         error: null,
       }),
     },
-    // Superset so a mock.module leak into another test file (e.g. useAuth.test.tsx)
-    // can't break it — mirrors what that file's own mock provides.
-    utente: {
-      me: { get: async () => ({ data: { id: 1, email: 'a@b.it' }, error: null }) },
-      login: { post: async () => ({ data: { utente: { id: 1, email: 'a@b.it' } }, error: null }) },
-      logout: { post: async () => ({ error: null }) },
-      refresh: { post: async () => ({ error: null }) },
-    },
   },
 }));
 mock.module('sonner', () => ({
   toast: { success: () => {}, warning: () => {}, error: () => {} },
-  // Toaster completes the mock: mock.module is process-global on CI's bun and
-  // mock.restore doesn't undo it, so this leaks into Layout.test.tsx, which imports
-  // { Toaster } from sonner — a partial mock there fails "Export 'Toaster' not found".
-  Toaster: () => null,
 }));
-afterAll(() => mock.restore());
 
 const renderList = async () => {
   const { AndamentoList } = await import('../src/andamento/AndamentoList');

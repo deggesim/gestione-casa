@@ -9,7 +9,7 @@
     "smoke": "bun run build && bun smoke.ts",
     "preview": "bun run build && bun serve.ts",
     "typecheck": "tsc --noEmit",
-    "test": "bun test --preload ./happydom.ts"
+    "test": "bun test --isolate --preload ./happydom.ts"
   },
   "dependencies": {
     "@elysiajs/eden": "^1.4.0",

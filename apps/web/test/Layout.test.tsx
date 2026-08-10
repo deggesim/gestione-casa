@@ -1,4 +1,4 @@
-import { test, expect, afterEach, afterAll, mock } from 'bun:test';
+import { test, expect, afterEach, mock } from 'bun:test';
 import { render, screen, cleanup, fireEvent, waitFor, within } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { routerMock } from './router-mock';
@@ -9,17 +9,30 @@ import { routerMock } from './router-mock';
 // RouterProvider — the full router is exercised in manual/e2e verification.
 // The auth seam uses the REAL useMe/useLogout hooks with the QueryClient's
 // ['me'] cache seeded directly (staleTime: Infinity so no background refetch
-// fires): mock.module is process-global in Bun and isn't reliably undone by
-// mock.restore(), so mocking an app module like useAuth here would leak into
-// useAuth.test.tsx's own real-hook assertions. Seeding the cache sidesteps
-// that entirely while still gating Logout visibility on real me.data.
+// fires), which gates Logout visibility on real me.data rather than on a stub.
+// (The original reason was also that mock.module leaked across files; `--isolate`
+// has since removed that hazard, but seeding the cache is still the better test.)
 mock.module('@tanstack/react-router', routerMock);
+
+// The api seam, declared here rather than inherited. In the logged-out cases nothing seeds
+// ['me'], so the real useMe genuinely fetches: until `--isolate` that request was answered
+// by an api client mock leaked from another test file, and once files stopped sharing a
+// module registry these tests started making 12 real HTTP calls that failed with
+// ECONNREFUSED — passing only because a failed probe and a pending one look the same here.
+// Mocking the client (an external seam) does not conflict with keeping the real auth hooks.
+mock.module('../src/api/client', () => ({
+  apiClient: {
+    utente: {
+      me: { get: async () => ({ data: null, error: { status: 401 } }) },
+      logout: { post: async () => ({ error: null }) },
+    },
+  },
+}));
 
 // Imported after the router mock so Layout binds to it.
 const { Layout } = await import('../src/layout/Layout');
 
 afterEach(cleanup);
-afterAll(() => mock.restore());
 
 const renderLayout = (meData?: { id: number }) => {
   const qc = new QueryClient({
@@ -111,11 +124,10 @@ test('the profilo modal prefills the email of a user who logged in after mount',
   const profilo = await waitFor(() => screen.getByRole('button', { name: /profilo utente/i }));
   fireEvent.click(profilo);
 
-  // Asserted as "not empty" rather than against the seeded address: the ['me'] fetch that
-  // useMe starts at mount is still in flight when the seed lands, and useAuth.test.tsx
-  // mocks the api client process-globally, so in a full-suite run that fetch can resolve
-  // with its own user and win the race. Either address is a legitimate current user; the
-  // regression this guards against produces an empty field, whatever the cache holds.
+  // Asserted against the seeded address. This used to be a weaker `not.toBe('')` because
+  // useAuth.test.tsx's process-global api mock could answer the ['me'] fetch that useMe
+  // starts at mount and win the race with its own user. With `--isolate` plus this file's
+  // own client mock (which answers 401), the seeded value is the only user in play.
   const email = (await waitFor(() => screen.getByLabelText('Email'))) as HTMLInputElement;
-  expect(email.value).not.toBe('');
+  expect(email.value).toBe('utente@example.it');
 });

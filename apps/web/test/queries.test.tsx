@@ -1,4 +1,4 @@
-import { test, expect, mock, afterAll } from 'bun:test';
+import { test, expect, mock } from 'bun:test';
 import { renderHook, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
@@ -29,18 +29,8 @@ mock.module('../src/api/client', () => ({
       'spese-frequenti': statistiche,
       tutto: statistiche,
     },
-    // Superset so a mock.module leak into another test file (e.g. useAuth.test.tsx)
-    // can't break it — process-global on CI's bun; mock.restore doesn't undo it.
-    utente: {
-      me: { get: async () => ({ data: { id: 1, email: 'a@b.it' }, error: null }) },
-      login: { post: async () => ({ data: { utente: { id: 1, email: 'a@b.it' } }, error: null }) },
-      logout: { post: async () => ({ error: null }) },
-      refresh: { post: async () => ({ error: null }) },
-    },
   },
 }));
-
-afterAll(() => mock.restore());
 
 const wrapper =
   (qc: QueryClient) =>
