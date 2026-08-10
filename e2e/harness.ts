@@ -120,8 +120,11 @@ export const ensureLoggedIn = async () => {
   await view.navigate(`${WEB_URL}/home`);
   const where = await waitFor<'home' | 'login'>(
     'home or login to render',
+    // Probes #password, not #email: ProfiloModal also renders an #email, so on a page with
+    // that modal open this would otherwise mistake the modal for the login form and type
+    // credentials into it. #password belongs to the login form alone.
     `(() => { if (document.querySelector('table[aria-label=andamento]')) return 'home';
-       if (document.querySelector('#email')) return 'login'; return false; })()`,
+       if (document.querySelector('#password')) return 'login'; return false; })()`,
   );
   if (where === 'home') return;
   await view.click('#email');
