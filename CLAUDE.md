@@ -20,6 +20,7 @@ Run from the repo root unless noted.
 - `bun run lint` — `prettier --check .` (see `.prettierignore`: skips `*.md`, `docs`, `bun.lock`). Use `bunx prettier --write .` to fix.
 - `bun run typecheck` — `tsc --noEmit` across every workspace (`--filter '*'`).
 - `bun run test` — runs `apps/api` + `packages/shared-types` (`bun test`) then `apps/web` (happy-dom).
+- `bun run --filter '@gc/web' smoke` — builds the web app and **boots the emitted bundle** (`apps/web/smoke.ts`): asserts asset URLs are absolute, then evaluates the bundle with `process` shadowed as undefined (what a browser is) and checks React rendered into `#root`. CI runs this after `test`. It exists because both production bugs shipped so far built *successfully* and broke only at load, so a plain `bun run build` would have caught neither. Requires `PUBLIC_API_URL` (from `.env` locally, from the workflow env in CI).
 - **Dev servers** — `bun run dev` (or `./dev.sh`) starts both: API on 5000 (`--watch`) and web on 3000, output prefixed per package. `bun run dev:debug` runs the API under Bun's inspector instead (prints a `debug.bun.sh` URL; uses `--hot` rather than `--watch` so the inspector connection survives a save, same as `.vscode/launch.json`). To start one alone: `bun run --filter '@gc/api' dev`, or `cd` into the app and `bun run dev`.
 - **db:pull** — `bun run --filter '@gc/api' db:pull` regenerates `apps/api/src/db/schema.ts` from a live DB (drizzle-kit).
 
@@ -33,13 +34,18 @@ DATABASE_URL=postgres://<user>:<pw>@localhost:5432/<db> JWT_SECRET=x bun test ap
 
 - ⚠️ `apps/api/test/setup.ts` (preloaded via root `bunfig.toml` `[test]`) **TRUNCATEs the `gc` schema** on `resetDb()` — point `DATABASE_URL` at a disposable test DB, **never the dev DB**. It also creates the schema idempotently and exposes `resetDb()` / `seedFixtures()`.
 - Web tests: `bun run --filter '@gc/web' test` (preloads `apps/web/happydom.ts` for a DOM).
+- ⚠️ **Always `waitFor` a *presence*, never an *absence*.** `await waitFor(() => expect(screen.queryByText(x)).toBeNull())` costs a flat ~5s under happy-dom and blows the 5s per-test timeout, even though its callback passes on the second poll: RTL's async wrapper ends on a `setTimeout(0)` that nothing wakes once the DOM has stopped mutating. Wait for the positive signal instead (an element appearing, a button becoming enabled), then assert the absence synchronously — see `test/ProfiloModal.test.tsx`.
 
 ## Configuration (strict convention)
 
 - **All runtime config lives in per-app `.env`** (`apps/{api,web}/.env`), gitignored and auto-loaded by Bun from each app's cwd. **Never hardcode config in source** (no default URLs/ports/secrets) — read from `process.env` and validate with the `required()` helper in `apps/api/src/env.ts`. Committed `.env.example` files list the required vars.
   - `apps/api`: `DATABASE_URL`, `JWT_SECRET`, `CORS_ORIGIN` (+ optional `PORT`, `COOKIE_SECURE`, `COOKIE_DOMAIN`).
   - `apps/web`: `PUBLIC_API_URL`.
-- **Frontend env vars must be prefixed `PUBLIC_*`.** Bun inlines only those into the browser bundle at build time via `apps/web/bunfig.toml` (`[serve.static] env = "PUBLIC_*"`). `process` does not exist in the browser, so referencing an unset or unprefixed `process.env.*` throws `ReferenceError: process is not defined`.
+- **Frontend env vars must be prefixed `PUBLIC_*`.** The **dev server** inlines them via `apps/web/bunfig.toml` (`[serve.static] env = "PUBLIC_*"`); **`bun build` does not** — its `--env` flag defaults to `disable`, so the `build` script passes `--env 'PUBLIC_*'` explicitly.
+- **Inlining only happens for variables that are actually *set*, and every new `PUBLIC_*` var must be read through `readEnv()` in `apps/web/src/config.ts`.** An unset var survives into the bundle as a literal `process.env.X`; `process` does not exist in a browser, so reading it throws `ReferenceError: process is not defined` and the app never boots. Two things about this are counterintuitive and both are verified against the bundler:
+  - A `typeof process === 'undefined'` guard **does not work** — it is evaluated in the browser, where it is always true, so it returns `undefined` even for vars that *were* inlined. `readEnv`'s `try`/`catch` is the only form that keeps the inlining (substitution is syntactic, so the literal member expression inside the closure is still replaced) and tolerates a missing var.
+  - **Shell env overrides `.env`, including when empty.** So do *not* "fix" a missing var with a `VAR=${VAR:-default}` prefix in a package.json script: it always exports a value and makes the `.env` entry dead config. Put the default in `.env.example` and let `readEnv` handle absence. Setting a var inline (`PUBLIC_ENABLE_SW=true bun run build`) is still the way to override `.env` deliberately.
+- **`bun build` needs `--public-path=/`.** By default it writes the hashed asset links into `index.html` as *relative* URLs (`./index-<hash>.js`). Since the app is an SPA whose deep routes are served the same `index.html`, the browser resolves those against the current directory: on `/statistiche/spesa` it asks for `/statistiche/index-<hash>.js`, gets the SPA fallback HTML back, and renders a blank page. Every route with a slash beyond the first breaks on refresh or deep link. The dev server is immune (it serves assets from an absolute `/_bun/asset/…`), so this only ever appears in a built app.
 
 ## Architecture
 

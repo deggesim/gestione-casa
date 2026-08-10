@@ -1,14 +1,17 @@
 import { test, expect, afterAll, mock } from 'bun:test';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { routerMock } from './router-mock';
 import { LoginForm } from '../src/login/LoginForm';
 
-mock.module('@tanstack/react-router', () => ({ useNavigate: () => () => {} }));
+mock.module('@tanstack/react-router', routerMock);
 
 // afterEach(cleanup) now lives in happydom.ts's preload, applying to every test file.
 
 // mock.module is process-global in Bun — restore it so this mock can't leak
-// into other test files that import '@tanstack/react-router'.
+// into other test files that import '@tanstack/react-router'. The shape itself is
+// shared with Layout.test.tsx (see router-mock.tsx) precisely because restore is
+// not reliable enough to depend on.
 afterAll(() => mock.restore());
 
 const renderForm = () => {
