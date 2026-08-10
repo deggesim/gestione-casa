@@ -365,7 +365,7 @@ Il flusso già verificato durante il design: gira in 8 passi.
 - Consumes: `harness.ts` → `view`, `WEB_URL`, `waitFor`, `clickText`, `ensureLoggedIn`; `seed.ts` → `E2E_USER`
 - Produces: niente per i task successivi.
 
-- [ ] **Step 1: scrivere il test**
+- [x] **Step 1: scrivere il test**
 
 `e2e/auth.test.ts`:
 
@@ -416,12 +416,12 @@ test('login across origins, httpOnly cookies, reload, logout, guard', async () =
 });
 ```
 
-- [ ] **Step 2: eseguire**
+- [x] **Step 2: eseguire**
 
 Run: `bun run e2e`
 Expected: 3 test verdi (i 2 di boot più questo).
 
-- [ ] **Step 3: dimostrare che il test discrimina**
+- [x] **Step 3: dimostrare che il test discrimina**
 
 Il flusso passa al primo colpo, quindi va provato che stia misurando qualcosa. In
 `e2e/harness.ts` cambiare temporaneamente `CORS_ORIGIN: WEB_URL` in
@@ -433,7 +433,7 @@ non arriva a `/home`). Ripristinare e rieseguire: verde.
 Questo mutante è esattamente la proprietà sotto test: se il test passasse anche con la
 CORS sbagliata, non starebbe verificando il cross-origin.
 
-- [ ] **Step 4: commit**
+- [x] **Step 4: commit**
 
 ```bash
 bunx prettier --check .
@@ -466,7 +466,7 @@ Selettori reali del markup (già verificati, non inventarne altri):
 | Salva del form | `.modal button[type=submit]` |
 | Conferma eliminazione | `.modal-footer button` con testo `Elimina` (via `clickText`) |
 
-- [ ] **Step 1: scrivere il test**
+- [x] **Step 1: scrivere il test**
 
 `e2e/andamento.test.ts`:
 
@@ -570,7 +570,7 @@ react-hook-form ignaro (il submit resta `disabled`). E `press()` non accetta cho
 non esiste un select-all. `fill()` fa `End` più un `Backspace` per carattere, che RHF
 registra — verificato guardando il bottone tornare `disabled` a campo svuotato.
 
-- [ ] **Step 2: eseguire**
+- [x] **Step 2: eseguire**
 
 Run: `bun run e2e`
 Expected: 6 test verdi.
@@ -578,7 +578,7 @@ Expected: 6 test verdi.
 Se il primo `filterBy` non filtra, verificare la soglia del filtro: `filterAndamenti`
 scatta oltre i 2 caratteri (`apps/web/src/andamento/list-utils.ts`).
 
-- [ ] **Step 3: dimostrare che il test discrimina — il mutante CSRF**
+- [x] **Step 3: dimostrare che il test discrimina — il mutante CSRF**
 
 In `apps/web/src/api/client.ts` rimuovere temporaneamente l'header CSRF dalle richieste,
 poi `bun run e2e`.
@@ -590,7 +590,7 @@ Ripristinare `client.ts` (`git checkout -- apps/web/src/api/client.ts`) e rieseg
 Questo prova due cose in un colpo: che il test esercita davvero il percorso delle
 mutazioni, e che la difesa CSRF è attiva nel browser reale.
 
-- [ ] **Step 4: commit**
+- [x] **Step 4: commit**
 
 ```bash
 bunx prettier --check .
@@ -618,7 +618,7 @@ Classi Recharts reali, verificate nel browser (**non** indovinarle): barre
 `.recharts-bar-rectangle`, settori della torta `.recharts-pie-sector`, superficie
 `.recharts-surface`.
 
-- [ ] **Step 1: scrivere il test**
+- [x] **Step 1: scrivere il test**
 
 `e2e/statistiche.test.ts`:
 
@@ -698,7 +698,7 @@ Selettori verificati sul codice, non da indovinare: `STAT_LINKS` in `Layout.tsx`
 `bolletta` — differenza voluta, parità col legacy) e `"/statistiche/casa"`. Se qualcosa non
 combacia, si adegua **il test**, non il componente.
 
-- [ ] **Step 2: eseguire**
+- [x] **Step 2: eseguire**
 
 Run: `bun run e2e`
 Expected: tutto verde.
@@ -707,7 +707,7 @@ Se un grafico risulta vuoto, il sospetto numero uno è il seed: le date sono rel
 oggi proprio perché l'intervallo di default è "Ultimo mese". Guardare
 `e2e/.artifacts/timeout-*.png`, che l'harness scrive da sé sui timeout.
 
-- [ ] **Step 3: dimostrare che il test discrimina**
+- [x] **Step 3: dimostrare che il test discrimina**
 
 Cambiare `.recharts-bar-rectangle` in `.recharts-bar-rectangle-inesistente` in un solo
 test ed eseguire: deve fallire in timeout, non passare. Ripristinare.
@@ -716,7 +716,7 @@ Seconda prova, più forte, già osservata durante il design: con un seed a date 
 passato la torta è vuota e il test fallisce. Non serve rifarla, ma va citata nel messaggio
 di commit come motivo delle date relative.
 
-- [ ] **Step 4: commit**
+- [x] **Step 4: commit**
 
 ```bash
 bunx prettier --check .
@@ -737,7 +737,7 @@ git commit -m "test(e2e): i sei schermi statistiche disegnano davvero in Chrome"
 - Consumes: `harness.ts` → `view`, `waitFor`, `clickText`, `ensureLoggedIn`, `reseed`, `WEB_URL`; `seed.ts` → `E2E_USER`
 - Produces: niente per i task successivi.
 
-- [ ] **Step 1: scrivere il test**
+- [x] **Step 1: scrivere il test**
 
 `e2e/profilo.test.ts`:
 
@@ -794,19 +794,19 @@ Se il mismatch fra le due password è una validazione di campo (deciso in 4d: `v
 `deps`, non un toast), scrivere anche l'asserzione che il bottone `Salva` resti disabilitato
 finché `confirmPassword` non combacia — è il comportamento confermato in quella fase.
 
-- [ ] **Step 2: eseguire**
+- [x] **Step 2: eseguire**
 
 Run: `bun run e2e`
 Expected: tutto verde. Eseguire **due volte** di fila: se il secondo run falla, il
 `reseed` dell'`afterAll` non sta ripristinando la password.
 
-- [ ] **Step 3: dimostrare che il test discrimina**
+- [x] **Step 3: dimostrare che il test discrimina**
 
 In `apps/web/src/utente/ProfiloModal.tsx` commentare temporaneamente il redirect a
 `/login` dopo il salvataggio ed eseguire: il primo test deve FALLIRE in timeout.
 Ripristinare (`git checkout -- apps/web/src/utente/ProfiloModal.tsx`) e rieseguire.
 
-- [ ] **Step 4: commit**
+- [x] **Step 4: commit**
 
 ```bash
 bunx prettier --check .
@@ -841,7 +841,7 @@ prova osservata → `ProfiloModal.test.tsx` emette 9 warning `useRouter must be 
 <RouterProvider>` **solo** con il flag, perché senza flag riceve il mock del router leakato
 da `Layout.test.tsx`/`LoginForm.test.tsx`. Costo: suite web da 1,8s a 3,1s.
 
-- [ ] **Step 1: attivare l'isolamento e osservare i warning**
+- [x] **Step 1: attivare l'isolamento e osservare i warning**
 
 In `apps/web/package.json`:
 
@@ -854,7 +854,7 @@ Expected: 89 pass, 0 fail, **più** i warning `useRouter must be used inside a
 <RouterProvider>` da `ProfiloModal.test.tsx`. Quei warning sono il punto: prima erano
 nascosti da un leak.
 
-- [ ] **Step 2: correggere `ProfiloModal.test.tsx`**
+- [x] **Step 2: correggere `ProfiloModal.test.tsx`**
 
 Aggiungere in testa al file il mock esplicito del router, con una spy che verifica il
 redirect. Ora che l'isolamento è attivo, un mock locale non può più contaminare altri file,
@@ -887,12 +887,12 @@ e le label dei campi sono esattamente `Email`, `Nuova password`, `Conferma passw
 Riusare l'helper `typeIn` già presente nel file. Se il salvataggio richiede il mock della
 mutazione, seguire il pattern già usato dagli altri test dello stesso file.
 
-- [ ] **Step 3: eseguire**
+- [x] **Step 3: eseguire**
 
 Run: `cd apps/web && bun run test`
 Expected: 90 pass, 0 fail, **nessun** warning `useRouter`.
 
-- [ ] **Step 4: rimuovere i superset difensivi**
+- [x] **Step 4: rimuovere i superset difensivi**
 
 In `queries.test.tsx`, `AndamentoList.actions.test.tsx` e `useAuth.test.tsx`: togliere le
 proprietà aggiunte solo per completare il mock verso file terzi (il blocco `utente` di
@@ -903,7 +903,7 @@ workaround. Lasciare **solo** ciò che il file usa davvero. Non toccare
 Run: `cd apps/web && bun run test`
 Expected: 90 pass. Poi, dalla radice, `bun run test`: api/shared + web tutti verdi.
 
-- [ ] **Step 5: commit**
+- [x] **Step 5: commit**
 
 ```bash
 bunx prettier --check .
@@ -925,9 +925,9 @@ per i test web è sicuro perché non toccano il database — a differenza dei te
 
 ### Chiusura della fase (dopo i sei task)
 
-- [ ] `bun run e2e` verde, eseguito **due volte** di fila (scopre gli stati non ripristinati).
-- [ ] `bun run test`, `bun run typecheck`, `bun run lint` verdi dalla radice.
-- [ ] `bun run --filter '@gc/web' smoke` verde (il gate di build della CI).
+- [x] `bun run e2e` verde, eseguito **due volte** di fila (scopre gli stati non ripristinati).
+- [x] `bun run test`, `bun run typecheck`, `bun run lint` verdi dalla radice.
+- [x] `bun run --filter '@gc/web' smoke` verde (il gate di build della CI).
 - [ ] Review dell'intero branch, poi push e `gh pr create` verso master.
 - [ ] Aggiornare il backlog nella spec o nel PR con ciò che resta: `apiErrorMessage` da
       restringere a 400/422, loading/empty state di `AndamentoList`, E2E in CI, E2E della PWA.
