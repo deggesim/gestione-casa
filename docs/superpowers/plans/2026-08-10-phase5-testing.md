@@ -911,7 +911,7 @@ git add apps/web/package.json apps/web/test
 git commit -m "test(web): isola i file di test e rimuove i mock superset a mano"
 ```
 
-- [ ] **Step 6: la prova finale è la CI**
+- [x] **Step 6: la prova finale è la CI**
 
 Il fallimento specifico non è riproducibile in locale nemmeno con un repro deliberato
 (provato in fase di design: due file, mock parziale di sonner nel primo, import di
@@ -928,6 +928,6 @@ per i test web è sicuro perché non toccano il database — a differenza dei te
 - [x] `bun run e2e` verde, eseguito **due volte** di fila (scopre gli stati non ripristinati).
 - [x] `bun run test`, `bun run typecheck`, `bun run lint` verdi dalla radice.
 - [x] `bun run --filter '@gc/web' smoke` verde (il gate di build della CI).
-- [ ] Review dell'intero branch, poi push e `gh pr create` verso master.
-- [ ] Aggiornare il backlog nella spec o nel PR con ciò che resta: `apiErrorMessage` da
+- [x] Review dell'intero branch, poi push e `gh pr create` verso master.
+- [x] Aggiornare il backlog nella spec o nel PR con ciò che resta: `apiErrorMessage` da
       restringere a 400/422, loading/empty state di `AndamentoList`, E2E in CI, E2E della PWA.
