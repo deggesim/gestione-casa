@@ -208,11 +208,20 @@ Quick-add "Spesa" → la riga compare in lista; modifica della descrizione → p
 reload; eliminazione con conferma → la riga sparisce. Il valore reale è il preflight
 `OPTIONS` con `X-Requested-With` su POST/PUT/DELETE emesso dal browser vero.
 
-Il form usa `<input type=date>` e `<select>`, scomodi da guidare senza `fill()`/
-`selectOption()`: i prefill del quick-add compilano già data e tipo spesa, quindi i flussi
-toccano solo campi di testo. Se una asserzione richiedesse di cambiare il `<select>`, si
-usa `press()` sulle frecce, non l'assegnazione di `value` da `evaluate` (che React non
-vedrebbe).
+Il form usa `<input type=date>` e `<select>`, che la webview non sa compilare
+dichiarativamente: i prefill del quick-add compilano già data, tipo spesa e costo, quindi i
+flussi toccano solo campi di testo. Se un'asserzione dovesse cambiare il `<select>`, si usa
+`press()` sulle frecce.
+
+**Vincolo sull'input, misurato in fase di design.** Assegnare `value` da `evaluate` **non
+funziona** con questa app: né `el.value = x` né il trucco del native setter di
+`HTMLInputElement` fanno registrare il valore a react-hook-form — il bottone di submit
+resta `disabled`. Un test che iniettasse valori passerebbe l'asserzione sul DOM mancando
+completamente lo stato del form. E `press()` non accetta chord (`press('ctrl+a')` solleva
+un errore: solo virtual key names o un singolo carattere), quindi non esiste un select-all.
+Un campo già popolato si riscrive con `End` più un `Backspace` per carattere — verificato
+guardando il bottone tornare `disabled` a campo svuotato. L'harness lo incapsula in
+`fill()`, unico modo ammesso di scrivere in un campo.
 
 ### 4.3 `statistiche.test.ts` — i grafici disegnano davvero
 
