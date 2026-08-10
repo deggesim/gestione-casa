@@ -9,7 +9,7 @@
   "scripts": {
     "dev": "bun run --watch src/index.ts",
     "dev:debug": "bun run --inspect=localhost:6499/gc --hot src/index.ts",
-    "start": "bun run src/index.ts",
+    "start": "NODE_ENV=production bun run src/index.ts",
     "typecheck": "tsc --noEmit",
     "db:pull": "drizzle-kit pull"
   },
