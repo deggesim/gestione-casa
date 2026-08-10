@@ -36,6 +36,19 @@ DATABASE_URL=postgres://<user>:<pw>@localhost:5432/<db> JWT_SECRET=x bun test ap
 - Web tests: `bun run --filter '@gc/web' test` (preloads `apps/web/happydom.ts` for a DOM).
 - ⚠️ **Always `waitFor` a *presence*, never an *absence*.** `await waitFor(() => expect(screen.queryByText(x)).toBeNull())` costs a flat ~5s under happy-dom and blows the 5s per-test timeout, even though its callback passes on the second poll: RTL's async wrapper ends on a `setTimeout(0)` that nothing wakes once the DOM has stopped mutating. Wait for the positive signal instead (an element appearing, a button becoming enabled), then assert the absence synchronously — see `test/ProfiloModal.test.tsx`.
 
+### End-to-end tests (`e2e/`)
+
+`bun run e2e` — the only command. It drives the **real browser** through `Bun.WebView` (Chrome via the DevTools Protocol), so it covers what the unit suites structurally cannot see: cross-origin session cookies, the CSRF preflight a browser actually emits, and whether Recharts paints (under happy-dom `ResponsiveContainer` measures 0×0, so every chart looks identical to a collapsed one).
+
+- **Prerequisites:** a Chromium-family browser installed (Chrome/Chromium/Edge/Brave — the webview backend drives an existing install, nothing is downloaded), and the `gc_test` database reachable on `:5432`. The script hardcodes `DATABASE_URL`/`JWT_SECRET` for `gc_test` — it is the one place in the repo allowed to, because a test DB name must never come from an ambient `.env` that could point at dev.
+- **Ports `5001`/`3001`**, chosen so a running `./dev.sh` (5000/3000) does not collide.
+- `e2e/harness.ts` is a **module-level singleton**: importing it seeds the DB, builds `apps/web`, boots the API and the built bundle, and opens one webview for the whole run. So **never add `--isolate` to the `e2e` script** — it would boot all of that once per file.
+- It serves the **built artifact** via `serve.ts`, not the dev server (which answers 200-with-HTML for any unknown path, hiding exactly the routing bugs Fase 3 shipped).
+- ⚠️ **The E2E suite does not run in CI** (it needs a browser and a database of its own); `bun run test` remains the CI gate. Run `bun run e2e` locally before opening a PR that touches the web app.
+- ⚠️ **`e2e/` is not typechecked.** `bun run typecheck` runs per-workspace and `e2e/` sits at the root, outside every workspace; the root has no `tsconfig.json` and the isolated install puts `bun-types` only inside `apps/*/node_modules`. `bun test` is its only gate.
+- Failure screenshots land in `e2e/.artifacts/` (gitignored) — `waitFor` writes one on every timeout, named after the condition that never became true.
+- Two footguns worth knowing before extending the suite: `await view.navigate(url)` must be explicit (passing `url:` to the constructor and evaluating immediately throws an opaque `'Runtime.evaluate' wasn't found`), and text goes into a field **only** through `click()` + `type()` — assigning `value` from `evaluate` does not reach react-hook-form, so use the harness `fill()`.
+
 ## Configuration (strict convention)
 
 - **All runtime config lives in per-app `.env`** (`apps/{api,web}/.env`), gitignored and auto-loaded by Bun from each app's cwd. **Never hardcode config in source** (no default URLs/ports/secrets) — read from `process.env` and validate with the `required()` helper in `apps/api/src/env.ts`. Committed `.env.example` files list the required vars.

@@ -45,7 +45,7 @@ Fondamenta. Al termine, `bun run e2e` semina il DB, alza i due server, apre la w
   - `e2e/seed.ts`: `E2E_USER: { email: string; password: string }`, `seedDb(): Promise<void>`, `seedUtente(apiUrl: string): Promise<void>`
   - `e2e/harness.ts`: `view: Bun.WebView`, `WEB_URL: string`, `API_URL: string`, `waitFor<T>(what: string, probe: string, timeoutMs?: number): Promise<T>`, `clickText(selector: string, text: string): Promise<void>`, `fill(selector: string, text: string): Promise<void>`, `ensureLoggedIn(): Promise<void>`, `shot(name: string): Promise<void>`, `reseed(): Promise<void>`
 
-- [ ] **Step 1: scrivere il seed**
+- [x] **Step 1: scrivere il seed**
 
 `e2e/seed.ts`:
 
@@ -117,7 +117,7 @@ Le costanti CSRF esistono e sono già riesportate da `@gc/shared-types`
 (`packages/shared-types/src/csrf.ts`: `CSRF_HEADER = 'X-Requested-With'`,
 `CSRF_VALUE = 'gc-web'`). Importarle, non reintrodurre le stringhe a mano.
 
-- [ ] **Step 2: scrivere l'harness**
+- [x] **Step 2: scrivere l'harness**
 
 `e2e/harness.ts`:
 
@@ -269,7 +269,7 @@ export const shot = async (name: string) => {
 };
 ```
 
-- [ ] **Step 3: scrivere il test di boot, che è anche il test dell'harness**
+- [x] **Step 3: scrivere il test di boot, che è anche il test dell'harness**
 
 `e2e/boot.test.ts`:
 
@@ -292,7 +292,7 @@ test('waitFor actually times out instead of hanging or passing', async () => {
 });
 ```
 
-- [ ] **Step 4: aggiungere lo script e ignorare gli artefatti**
+- [x] **Step 4: aggiungere lo script e ignorare gli artefatti**
 
 In `package.json` di root, dentro `scripts`:
 
@@ -306,7 +306,7 @@ Non toccare lo script `test`: la CI non deve eseguire gli E2E. In `.gitignore` a
 e2e/.artifacts/
 ```
 
-- [ ] **Step 5: eseguire**
+- [x] **Step 5: eseguire**
 
 Run: `bun run e2e`
 Expected: 2 test verdi. Il primo run compila il bundle web (qualche secondo).
@@ -314,7 +314,7 @@ Expected: 2 test verdi. Il primo run compila il bundle web (qualche secondo).
 Se compare `'Runtime.evaluate' wasn't found`, qualcuno ha passato `url:` al costruttore
 della webview: usare `await view.navigate(...)`.
 
-- [ ] **Step 6: dimostrare che il guard del seed funziona**
+- [x] **Step 6: dimostrare che il guard del seed funziona**
 
 Run:
 
@@ -334,7 +334,7 @@ Poi ripulire (`TRUNCATE gc.andamento`) e rieseguire `bun run e2e`: verde.
 Questo passo non è cerimonia: è l'unica prova che il guard che protegge il DB di
 sviluppo funziona davvero.
 
-- [ ] **Step 7: documentare in `CLAUDE.md`**
+- [x] **Step 7: documentare in `CLAUDE.md`**
 
 Aggiungere una sezione sotto quella dei test, che dica: comando `bun run e2e`;
 prerequisiti (Chrome/Chromium/Edge/Brave installato — il backend della webview lo pilota
@@ -342,7 +342,7 @@ via DevTools Protocol; database `gc_test` raggiungibile); porte `5001`/`3001` sc
 non collidere con `./dev.sh`; **gli E2E non girano in CI** e `bun run test` resta il gate
 della CI; gli screenshot dei fallimenti finiscono in `e2e/.artifacts/`.
 
-- [ ] **Step 8: lint e commit**
+- [x] **Step 8: lint e commit**
 
 ```bash
 bunx prettier --write . && bunx prettier --check .
