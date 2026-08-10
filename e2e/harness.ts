@@ -1,3 +1,4 @@
+import { buildApp } from '../apps/api/src/app';
 import { createHandler } from '../apps/web/serve';
 import { E2E_USER, seedDb, seedUtente } from './seed';
 
@@ -14,18 +15,31 @@ export const WEB_URL = `http://localhost:${WEB_PORT}`;
 const root = new URL('../', import.meta.url);
 const webDir = new URL('./apps/web/', root);
 
-const untilReachable = async (url: string, timeoutMs = 20_000) => {
-  const deadline = Date.now() + timeoutMs;
-  for (;;) {
-    try {
-      if ((await fetch(url)).ok) return;
-    } catch {
-      // not up yet
-    }
-    if (Date.now() > deadline) throw new Error(`timeout: ${url} never answered`);
-    await Bun.sleep(100);
+// A stale listener on either port silently poisons the whole run instead of failing: Bun
+// sets SO_REUSEPORT on Linux, so a second server binds the SAME port rather than erroring,
+// and requests round-robin between them. Observed for real while building this suite — an
+// interrupted run left five API servers on :5001, some of them with a deliberately wrong
+// CORS_ORIGIN, and the auth flow failed against a restored config.
+const assertPortFree = async (port: number, what: string) => {
+  try {
+    await fetch(`http://localhost:${port}/`, { signal: AbortSignal.timeout(1_000) });
+  } catch {
+    return; // nothing listening, which is the only acceptable state
   }
+  throw new Error(
+    `port ${port} (${what}) is already in use — stop the stale server, then rerun. ` +
+      `Note SO_REUSEPORT means a second server would bind it silently.`,
+  );
 };
+await assertPortFree(API_PORT, 'api');
+await assertPortFree(WEB_PORT, 'web');
+
+// env.ts falls back to CORS_ORIGIN='*' outside production. With '*' the cross-origin flow
+// in auth.test would pass no matter what the browser did — the flow would assert nothing.
+// Presence is enforced here (the `e2e` script sets it); the value is left to the test,
+// which is what keeps the CORS mutant meaningful.
+if (!process.env.CORS_ORIGIN || process.env.CORS_ORIGIN === '*')
+  throw new Error('CORS_ORIGIN must be set explicitly for the e2e suite — run `bun run e2e`');
 
 await seedDb();
 
@@ -39,36 +53,21 @@ const build = Bun.spawnSync(['bun', 'run', 'build'], {
 });
 if (build.exitCode !== 0) throw new Error(`web build failed: ${build.stderr.toString()}`);
 
-// Only PORT and CORS_ORIGIN are overridden — DATABASE_URL and JWT_SECRET come from the
-// `e2e` script. The child runs with cwd=apps/api and therefore loads apps/api/.env, which
-// points at the DEV database: it is the injected DATABASE_URL winning over the file that
-// keeps this safe.
-const api = Bun.spawn(['bun', 'run', 'src/index.ts'], {
-  cwd: Bun.fileURLToPath(new URL('./apps/api/', root)),
-  env: { ...process.env, PORT: String(API_PORT), CORS_ORIGIN: WEB_URL },
-  stdout: 'pipe',
-  stderr: 'pipe',
-});
-await untilReachable(`${API_URL}/health`);
+// In-process, not a spawned child: `process.on('exit')` does NOT fire under `bun test`
+// (verified), so a spawned API outlives the run and — see assertPortFree — keeps answering
+// on :5001 next to the next run's server. Serving here ties the API's lifetime to the test
+// process, which bun test tears down whatever the outcome. What this gives up is index.ts
+// (two lines) and apps/api/.env loading; since the suite runs from the repo root, which has
+// no .env, DATABASE_URL can only come from the `e2e` script. Do not "fix" the cleanup and
+// go back to a child process: the exit handler was dead code, not a bug to repair.
+buildApp().listen(API_PORT);
+const health = await fetch(`${API_URL}/health`);
+if (!health.ok) throw new Error(`api did not start: ${health.status}`);
 await seedUtente(API_URL);
 
-const web = Bun.serve({
-  port: WEB_PORT,
-  fetch: createHandler(new URL('./dist/', webDir)),
-});
+Bun.serve({ port: WEB_PORT, fetch: createHandler(new URL('./dist/', webDir)) });
 
 export const view = new Bun.WebView({ width: 1280, height: 800 });
-
-// bun test has no global afterAll across files, so cleanup hangs off process exit.
-process.on('exit', () => {
-  try {
-    view.close();
-  } catch {
-    // already closed
-  }
-  web.stop(true);
-  api.kill();
-});
 
 /** Polls `probe` in the page until it returns something truthy. Replaces Playwright's
  *  auto-retrying assertions: `what` is what shows up in the timeout message. */

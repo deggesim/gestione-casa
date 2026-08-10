@@ -95,21 +95,37 @@ sempre `await view.navigate(url)` esplicito.
 
 Porte dedicate, così `./dev.sh` può restare attivo in parallelo:
 
-| | comando | cwd | env iniettato |
-|---|---|---|---|
-| api | `bun run src/index.ts` | `apps/api` | `PORT=5001`, `CORS_ORIGIN=http://localhost:3001` |
-| web | `bun run build` poi `bun serve.ts` | `apps/web` | `PORT=3001`, `PUBLIC_API_URL=http://localhost:5001`, `PUBLIC_ENABLE_SW=false` |
+Porte dedicate: api su `5001`, web su `3001`. **Entrambi i server girano nel processo di
+test**, non come figli:
 
-L'harness inoltra `process.env` e sovrascrive **solo** le variabili in tabella:
-`DATABASE_URL` e `JWT_SECRET` arrivano dallo script `e2e` (§3.3), definiti in un posto solo.
+| | come | env |
+|---|---|---|
+| api | `buildApp().listen(5001)` importato da `apps/api/src/app.ts` | `CORS_ORIGIN=http://localhost:3001` dallo script `e2e` |
+| web | `bun run build` (figlio, `cwd=apps/web`) poi `Bun.serve` con `createHandler(dist)` | `PUBLIC_API_URL=http://localhost:5001`, `PUBLIC_ENABLE_SW=false` |
 
-Nessuna modifica al codice di produzione serve per questo: `apps/api/src/env.ts` e
-`apps/web/serve.ts` leggono già `PORT`, e **in Bun le variabili di processo vincono sui file
-`.env`** (verificato: `FOO=fromenv bun -e …` con un `.env` che dice `fromfile` stampa
-`fromenv`). Questa precedenza non è una comodità, è la proprietà di sicurezza del design: il
-processo api figlio parte con `cwd=apps/api` e quindi carica `apps/api/.env`, che punta al
-**DB di sviluppo** — è il `DATABASE_URL` iniettato che vince, e i `.env` locali non vengono
-né modificati né spostati.
+**Perché in-process e non un figlio** — correzione fatta in implementazione, dopo un
+guasto reale. `process.on('exit')` **non scatta** sotto `bun test` (verificato: l'handler non
+stampa e il figlio sopravvive), quindi un'api spawnata resta viva dopo la suite; e poiché su
+Linux Bun imposta `SO_REUSEPORT`, il server della corsa successiva **si affianca** a quello
+vecchio sulla stessa porta invece di fallire, e le richieste si distribuiscono fra i due. Il
+sintomo osservato: cinque api su `:5001`, alcune con la `CORS_ORIGIN` di un mutante, e il
+flusso di login che falliva a configurazione già ripristinata. Servendo in-process la vita
+dei server coincide con quella del processo di test, che `bun test` chiude comunque. Si
+rinuncia a `index.ts` (due righe) e al caricamento di `apps/api/.env`.
+
+Restano tre guard, tutte verificate facendole scattare:
+
+- **Porte occupate** → l'harness rifiuta di partire (`assertPortFree`), perché con
+  `SO_REUSEPORT` un server di troppo è invisibile e avvelena la corsa in silenzio.
+- **`CORS_ORIGIN` assente o `*`** → rifiuta di partire. `env.ts` fuori da produzione ripiega
+  su `'*'`, e con `'*'` il flusso cross-origin passerebbe qualunque cosa faccia il browser:
+  l'asserzione non asserirebbe niente. La presenza è imposta dall'harness, il valore lo
+  giudica il test — è ciò che rende sensato il mutante CORS.
+- **`gc.andamento` oltre 100 righe** → rifiuta di fare `TRUNCATE` (§3.2).
+
+La sicurezza del database non poggia più sulla precedenza `process.env` sui file `.env`: la
+suite gira dalla radice, che **non ha** `.env`, quindi `DATABASE_URL` può arrivare solo dallo
+script `e2e`. Nessun `.env` locale viene modificato o spostato.
 
 Il web gira sull'**artefatto buildato** servito da `serve.ts`, non sul dev server: è ciò che
 spedirà la Fase 6, ha il fallback SPA reale sui deep link, e il dev server risponde
