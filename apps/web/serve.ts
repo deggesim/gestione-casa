@@ -88,6 +88,12 @@ export const createHandler = (distUrl: URL, apiInternalUrl?: string) => {
 // Guarded so the test can import createHandler without binding a port.
 if (import.meta.main) {
   const port = Number(process.env.PORT ?? 3000);
-  Bun.serve({ port, fetch: createHandler(new URL('./dist/', import.meta.url)) });
+  // hostname '::' for the same reason as apps/api/src/index.ts: Railway reaches containers
+  // over its IPv6 private network.
+  Bun.serve({
+    port,
+    hostname: '::',
+    fetch: createHandler(new URL('./dist/', import.meta.url), process.env.API_INTERNAL_URL),
+  });
   console.log(`Serving dist on http://localhost:${port}`);
 }
