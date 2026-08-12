@@ -56,7 +56,20 @@ export const createHandler = (distUrl: URL, apiInternalUrl?: string) => {
       // that forwards session cookies, a future parser change — or a rewrite back to
       // `new URL(path, base)` — must fail closed instead of leaking them.
       if (target.origin !== apiBase.origin) return new Response('Bad Gateway', { status: 502 });
-      return await fetch(new Request(target, req), { redirect: 'manual' });
+      // The api being unreachable is an ordinary runtime state (a redeploy, a wrong
+      // API_INTERNAL_URL), so it must answer like one. Unguarded, the rejected fetch reaches
+      // Bun.serve, which replies with its own error page: 67KB of HTML embedding THIS FILE's
+      // source, on the public origin, and — since api-error.ts lets a server body override the
+      // toast message — the whole blob rendered in the UI. An empty body leaks nothing and
+      // leaves the app its own Italian message. The log line names the host that failed, which
+      // is what tells a wrong hostname apart from an api that is down; the browser is
+      // deliberately not told which.
+      try {
+        return await fetch(new Request(target, req), { redirect: 'manual' });
+      } catch (cause) {
+        console.error(`proxy: ${req.method} ${target.origin}${target.pathname} unreachable`, cause);
+        return new Response(null, { status: 502 });
+      }
     }
 
     // Resolve to a real path BEFORE checking containment. Comparing URL pathnames instead

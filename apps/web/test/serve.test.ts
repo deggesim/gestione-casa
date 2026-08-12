@@ -9,6 +9,7 @@ import { createHandler } from '../serve';
 // A real dist/ with a real symlink escaping it: the hole this guards was invisible to any
 // string-level assertion, because it lives in the filesystem rather than in the URL.
 let root: string;
+let distUrl: URL;
 let handler: (req: Request) => Promise<Response>;
 let proxied: (req: Request) => Promise<Response>;
 let upstream: ReturnType<typeof Bun.serve>;
@@ -47,7 +48,7 @@ beforeAll(async () => {
 
   // Trailing slash is required, or `new URL('./x', base)` resolves as a sibling of dist/
   // rather than inside it.
-  const distUrl = pathToFileURL(join(root, 'dist') + '/');
+  distUrl = pathToFileURL(join(root, 'dist') + '/');
   handler = createHandler(distUrl);
   proxied = createHandler(distUrl, `http://localhost:${upstream.port}`);
 });
@@ -147,6 +148,17 @@ test('does not intercept application routes', async () => {
   // /statistiche/casa is an SPA route AND an API path shape: only the /api prefix may be
   // proxied, or every deep link would be forwarded to the API and 404.
   expect(isShell(await proxied(new Request('http://localhost/statistiche/casa')))).toBe(true);
+});
+
+test('answers 502 when the API is unreachable, without leaking the crash page', async () => {
+  // Shipped as a 500 in production: the rejected fetch reached Bun.serve, whose default error
+  // page embeds the SOURCE of this proxy — 67KB of it, on the public host, and the whole blob
+  // then landed in the app's error toast (api-error.ts lets a server body override the
+  // message). Port 1 has nothing listening, which is the same ECONNREFUSED.
+  const dead = createHandler(distUrl, 'http://127.0.0.1:1');
+  const res = await dead(new Request('http://localhost/api/utente/me'));
+  expect(res.status).toBe(502);
+  expect(await res.text()).toBe('');
 });
 
 test('without API_INTERNAL_URL an /api path is just an SPA route', async () => {
