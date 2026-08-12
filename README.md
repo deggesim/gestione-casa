@@ -18,13 +18,13 @@ Railway project (existing)
  ├─ gc-server    legacy           unchanged, stays up
  ├─ gc-frontend  legacy           unchanged, stays up
  │
- ├─ api    gestione-casa-api.up.railway.app     (public, manual debugging only)
- │         binds :: — port 5000
+ ├─ gestione-casa-api   gestione-casa-api.up.railway.app   (public, manual debugging only)
+ │                      binds :: — port 5000
  │
- └─ web    gestione-casa.up.railway.app         (the host people use)
-           binds :: — port 3000
-             ├─ /api/*  ──fetch──▶  api.railway.internal:5000     private network
-             └─ /*      ──────────▶  dist/  (serve.ts, SPA fallback)
+ └─ gestione-casa-web   gestione-casa.up.railway.app       (the host people use)
+                        binds :: — port 3000
+                          ├─ /api/*  ─fetch─▶  gestione-casa-api.railway.internal:5000
+                          └─ /*      ────────▶  dist/  (serve.ts, SPA fallback)
 ```
 
 **Why the browser never talks to the api directly.** `up.railway.app` is on the Public
@@ -34,7 +34,10 @@ blocks — the app would simply not log in on iPhone or Safari. One public origi
 `/api/*` proxied over the private network, removes the problem instead of working around it.
 A custom domain would also solve it and was declined (annual registration cost).
 
-### Service `api`
+### Service `gestione-casa-api`
+
+The service **name** is load-bearing, not cosmetic: Railway derives the private DNS name from
+it as `<service-name>.railway.internal`, and that is what the web service dials.
 
 | Variable | Value | Notes |
 |---|---|---|
@@ -46,13 +49,13 @@ A custom domain would also solve it and was declined (annual registration cost).
 | `PORT` | `5000` | Explicit: `API_INTERNAL_URL` on the web service hardcodes this port |
 | `RAILWAY_DOCKERFILE_PATH` | `apps/api/Dockerfile` | Railpack does not detect Bun projects |
 
-### Service `web`
+### Service `gestione-casa-web`
 
 | Variable | Value | When it acts |
 |---|---|---|
 | `PUBLIC_API_URL` | `https://gestione-casa.up.railway.app/api` | **Build time** — inlined into the bundle. Declared as `ARG` in the Dockerfile; without that it stays a literal `process.env.PUBLIC_API_URL` and the page is blank on first load |
 | `PUBLIC_ENABLE_SW` | `true` | **Build time** — enables service-worker registration |
-| `API_INTERNAL_URL` | `http://api.railway.internal:5000` | **Runtime** — read by `serve.ts`. Deliberately no `PUBLIC_` prefix: a private address has no business in a bundle. ⚠️ The hostname is the api **service name** on the dashboard — confirm it there |
+| `API_INTERNAL_URL` | `http://gestione-casa-api.railway.internal:5000` | **Runtime** — read by `serve.ts`. Deliberately no `PUBLIC_` prefix: a private address has no business in a bundle. ⚠️ The hostname must be the api's **service name**, not the role name `api` — read it off the dashboard rather than assuming. Getting it wrong shipped once: every `/api/*` call 502s (before the guard in `serve.ts`, 500s) while both services look perfectly healthy, because the public edge reaches the api by a path that has nothing to do with private DNS |
 | `PORT` | injected by Railway | **Runtime** — do not set by hand |
 | `RAILWAY_DOCKERFILE_PATH` | `apps/web/Dockerfile` | |
 
@@ -66,8 +69,8 @@ a development-mode React bundle ship unnoticed.
 
 | Service | Root directory | `healthcheckPath` |
 |---|---|---|
-| api | `/` | `/health` |
-| web | `/` | `/` |
+| `gestione-casa-api` | `/` | `/health` |
+| `gestione-casa-web` | `/` | `/` |
 
 Root directory stays `/` for both: Bun workspaces need the root `package.json` and `bun.lock`,
 so pointing a service at `apps/api` would break the `@gc/shared-types: workspace:*` dependency.
@@ -83,10 +86,12 @@ that the private network resolves.
 1. Merge the phase branch into `master` and let CI go green (lint, typecheck, test, bundle
    smoke). CI does **not** build the Docker images, so Railway performs the first real image
    build.
-2. Create the **api** service from the `gestione-casa` repo: variables above, root directory
-   `/`, healthcheck `/health`, public domain `gestione-casa-api.up.railway.app`.
-3. Create the **web** service: variables above, root directory `/`, healthcheck `/`, public
-   domain `gestione-casa.up.railway.app`.
+2. Create the api service from the `gestione-casa` repo, **named `gestione-casa-api`**:
+   variables above, root directory `/`, healthcheck `/health`, public domain
+   `gestione-casa-api.up.railway.app`. The name is what `API_INTERNAL_URL` dials in step 3.
+3. Create the web service, **named `gestione-casa-web`**: variables above, root directory `/`,
+   healthcheck `/`, public domain `gestione-casa.up.railway.app` (the domain is not derived
+   from the service name — it was chosen, and deliberately drops the `-web`).
 4. Check the api logs for `API listening on port 5000 (dual-stack)`. A service listening on
    `0.0.0.0` is reachable from the public edge and invisible to the internal proxy —
    `ECONNREFUSED` on a deploy that looks successful.
