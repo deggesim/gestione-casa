@@ -81,6 +81,51 @@ would tie the frontend's deployability to the api being up. `/api/health` throug
 the first *manual* check after a deploy — one line that proves both that the proxy forwards and
 that the private network resolves.
 
+### Watch paths
+
+Without them every push to `master` rebuilds and redeploys both services, a README edit
+included. Railway honours no commit-message escape hatch — `[skip ci]` skips **GitHub Actions
+only**, and `[skip cd]` is an open feature request, not a feature — so watch paths are the one
+lever there is. Dashboard only (Settings → Source), not `railway.json`: both services have root
+directory `/`, so a single file at the repo root could not give them different paths.
+
+Gitignore-style, one per line, always resolved from `/` even when a root directory is set:
+
+| `gestione-casa-api` | `gestione-casa-web` |
+|---|---|
+| `/apps/api/**` | `/apps/web/**` |
+| `/packages/**` | `/packages/**` |
+| `/package.json` | `/package.json` |
+| `/bun.lock` | `/bun.lock` |
+| `/bunfig.toml` | `/bunfig.toml` |
+| `/tsconfig.base.json` | `/tsconfig.base.json` |
+| `/.dockerignore` | `/.dockerignore` |
+
+One line apart; the rest is what both images are built from. `.dockerignore` is in there because
+it defines the build context (`COPY . .`), and `bun.lock` because `--frozen-lockfile` turns a
+stale lock into a failed build rather than a stale deploy. `docs/`, `e2e/`, `.github/`, `*.md`
+and `dev.sh` are deliberately out — none of them reaches a running image.
+
+**The lists err wide on purpose.** The two mistakes do not cost the same: too wide wastes a
+two-minute build, too narrow means a pushed fix never reaches production and is discovered while
+debugging why the fix "did not work". Hence `bunfig.toml` and `tsconfig.base.json`, which
+contain nothing load-bearing *today* but are where a build-affecting option would land tomorrow.
+**No `!` negations anywhere**, also on purpose: a Railway negation only works after a rule that
+includes, so `!**/*.md` alone silently does nothing — the single most common cause of "watch
+paths are ignored". Include-only rules cannot reach that trap.
+
+⚠️ **The one narrow edge:** `/apps/api/**` is absent from the web service because the only link
+is `import type { App } from '@gc/api'` (`apps/web/src/api/client.ts`) — type-only, erased at
+build, so an api change cannot alter the web bundle. Nothing enforces that: there is no
+`import type`-only lint guard and `@gc/api` maps `.` to `src/app.ts`, the whole runtime module.
+A value import from `@gc/api` in web would make this list stale-deploy the web service. `smoke`
+would catch it (it boots the emitted bundle, which a runtime import of Elysia/Drizzle breaks)
+but it runs in CI, not here. Add `/apps/api/**` to the web list, or add the lint guard, if that
+import ever stops being type-only.
+
+Note that with watch paths configured, empty commits no longer trigger a redeploy either — use
+the Redeploy button rather than the empty-commit trick.
+
 ### Deploy sequence
 
 1. Merge the phase branch into `master` and let CI go green (lint, typecheck, test, bundle
@@ -92,11 +137,13 @@ that the private network resolves.
 3. Create the web service, **named `gestione-casa-web`**: variables above, root directory `/`,
    healthcheck `/`, public domain `gestione-casa.up.railway.app` (the domain is not derived
    from the service name — it was chosen, and deliberately drops the `-web`).
-4. Check the api logs for `API listening on port 5000 (dual-stack)`. A service listening on
+4. Set the watch paths on both services (see above). Skippable on a first deploy, and then
+   every unrelated push rebuilds both images until it is done.
+5. Check the api logs for `API listening on port 5000 (dual-stack)`. A service listening on
    `0.0.0.0` is reachable from the public edge and invisible to the internal proxy —
    `ECONNREFUSED` on a deploy that looks successful.
-5. Run the manual checks below.
-6. Leave the legacy services alone.
+6. Run the manual checks below.
+7. Leave the legacy services alone.
 
 ### Post-deploy checks
 
