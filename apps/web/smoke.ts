@@ -34,7 +34,18 @@ const src = html.match(/<script[^>]*\ssrc="([^"]+)"/)?.[1];
 if (!src) fail('no <script src> in dist/index.html');
 const code = await Bun.file(new URL(src.replace(/^\//, ''), dist)).text();
 
-// 2. The bundle must boot without `process`. Shadowing it as an undefined parameter
+// 2. The bundle must carry React's PRODUCTION build. Bun's bundler substitutes
+// process.env.NODE_ENV at build time and falls back to "development" when the ambient
+// variable is unset, which leaves React's dev branch alive: ~300 KB of invariant messages,
+// key checks and hook-order checks shipped to every visitor, on a build that looks fine.
+// Assert the PRESENCE of the production marker rather than the absence of dev warnings:
+// production React replaces its messages with numeric codes, so the good bundle is the one
+// carrying the cryptic string. Should React ever rename it, this fails loudly — the safe
+// direction for a check whose whole job is to notice a silent downgrade.
+if (!code.includes('Minified React error'))
+  fail('bundle ships development React — the build script must set NODE_ENV=production');
+
+// 3. The bundle must boot without `process`. Shadowing it as an undefined parameter
 // makes every `process.x` read throw, which is what referencing the undeclared
 // identifier does in a real browser — so an un-inlined PUBLIC_* var fails here rather
 // than in front of a user. Bun always defines a real `process`, so nothing short of
@@ -58,5 +69,7 @@ try {
 for (let i = 0; i < 100 && root.children.length === 0; i++) await Bun.sleep(20);
 if (root.children.length === 0) fail('bundle evaluated but rendered nothing into #root');
 
-console.log('smoke: OK — assets absolute, bundle boots and renders without `process`');
+console.log(
+  'smoke: OK — assets absolute, React in production, boots and renders without `process`',
+);
 process.exit(0);

@@ -32,9 +32,12 @@ self.addEventListener('fetch', (event) => {
   const request = event.request;
   if (request.method !== 'GET') return;
   const url = new URL(request.url);
-  // The API lives on another origin (PUBLIC_API_URL), so this excludes every API call.
-  // ponytail: if Fase 6 ever puts web and api on the same domain, add an explicit
-  // exclusion for /utente, /andamento, /tipo-spesa and /statistiche.
+  // Same-origin API calls need no exclusion, and this is worth stating because Fase 6 put
+  // web and api on one origin, which is exactly when an exclusion looks necessary: below,
+  // the worker only responds for isImmutableAsset (/index-<hash>.js|css) or for a
+  // navigation. An Eden fetch to /api/... is neither, so it falls through both branches and
+  // goes to the network uncached. Add an explicit /api/ exclusion only if a catch-all
+  // caching branch is ever introduced.
   if (url.origin !== self.location.origin) return;
 
   if (isImmutableAsset(url.pathname)) {
