@@ -53,14 +53,16 @@ builder, rete privata IPv6, Postgres esistente)
 | `apps/api/src/index.ts` | entrypoint api: bind `::` | 2 |
 | `apps/web/public/sw.js` | correzione del commento `ponytail:` (nessuna modifica di codice) | 3 |
 | `apps/api/.env.example`, `apps/web/.env.example` | documentazione delle variabili di produzione | 3 |
-| `apps/api/Dockerfile`, `apps/web/Dockerfile`, `.dockerignore` | build di produzione | 4 |
-| `README.md` | runbook di deploy (variabili, sequenza, rollback, convivenza) | 5 |
+| `apps/web/package.json` | `NODE_ENV=production` nello script `build` | 4 |
+| `apps/web/smoke.ts` | asserzione che il bundle contenga React di produzione | 4 |
+| `apps/api/Dockerfile`, `apps/web/Dockerfile`, `.dockerignore` | build di produzione | 5 |
+| `README.md` | runbook di deploy (variabili, sequenza, rollback, convivenza) | 6 |
 
 ---
 
 ## Correzioni alla spec emerse durante la pianificazione
 
-Da applicare al file della spec nel Task 5, così il documento resta la fonte affidabile:
+Da applicare al file della spec nel Task 6, così il documento resta la fonte affidabile:
 
 1. **§1 sbaglia sull'healthcheck.** `apps/api/src/app.ts:27` espone già
    `GET /health → {status:'ok'}`, non autenticato (`assertCsrf` riguarda solo i metodi
@@ -78,11 +80,17 @@ Da applicare al file della spec nel Task 5, così il documento resta la fonte af
    (`harness.ts:50-54`); un test del proxy nel browser richiederebbe un secondo build con un
    `PUBLIC_API_URL` diverso, duplicando i flag di `bun build` fuori dallo script `build`. Al
    suo posto: i casi proxy del Task 1 (che coprono il contratto del proxy) più la **verifica
-   locale della topologia di produzione** del Task 6, che usa lo script `preview` esistente e
+   locale della topologia di produzione** del Task 7, che usa lo script `preview` esistente e
    dà un browser reale contro l'api reale senza una riga di codice nuova.
 4. **§3 e §7 vanno estese al servizio web**: anche `serve.ts` fa bind su `::` (Task 2). Il
    proxy pubblico di Railway raggiunge i container attraverso la rete privata, quindi
    ascoltare solo su IPv4 è un rischio per entrambi i servizi, non solo per l'api.
+5. **§5 e §11 non conoscono il guasto di `NODE_ENV`** — non un errore della spec ma una
+   scoperta successiva, del 2026-08-12, nata da una domanda dell'utente sul perché una
+   variabile `NODE_ENV` esista in un progetto interamente su Bun: il bundle di produzione
+   contiene React in modalità sviluppo, 300 KB in più su ogni primo caricamento. Aggiungere
+   `apps/web/package.json` e `apps/web/smoke.ts` alla tabella delle modifiche e all'elenco dei
+   file, e citare la misura 1,2 M → 900 K. Prove e ragionamento nel Task 4.
 
 ---
 
@@ -99,7 +107,7 @@ Il cuore della fase. Test prima dell'implementazione.
 - Produces: `createHandler(distUrl: URL, apiInternalUrl?: string) => (req: Request) => Promise<Response>`.
   Il secondo parametro è **opzionale**: i due chiamanti esistenti
   (`apps/web/test/serve.test.ts:22` e `e2e/harness.ts:68`) continuano a passare un solo
-  argomento e non cambiano comportamento. Il Task 4 si appoggia al blocco `import.meta.main`
+  argomento e non cambiano comportamento. Il Task 5 si appoggia al blocco `import.meta.main`
   che legge `process.env.API_INTERNAL_URL`.
 
 ### ⚠️ Vincolo di ambiente scoperto negli spike, da rispettare alla lettera
@@ -375,13 +383,13 @@ EOF
 **Interfaces:**
 - Consumes: il `createHandler` a due parametri del Task 1.
 - Produces: niente per i task successivi; è il presupposto della raggiungibilità sulla rete
-  privata usata dal Task 4.
+  privata usata dal Task 5.
 
 **Perché non c'è un test.** L'asserzione sarebbe «un socket su `::` accetta anche IPv4», che
 richiede di occupare una porta reale in una suite che gira in parallelo a `./dev.sh` e alla
 suite e2e (`SO_REUSEPORT` rende una collisione silenziosa, vedi `e2e/harness.ts:18-33`). Il
 comportamento è stato verificato manualmente durante la stesura della spec e la sua garanzia
-operativa è la riga di log all'avvio più il primo `curl` della checklist del Task 6.
+operativa è la riga di log all'avvio più il primo `curl` della checklist del Task 7.
 
 - [ ] **Step 1: Modificare l'entrypoint dell'api**
 
@@ -478,7 +486,7 @@ EOF
 
 **Interfaces:**
 - Consumes: il nome `API_INTERNAL_URL` e il prefisso `/api` del Task 1.
-- Produces: i valori che il runbook del Task 5 e la dashboard Railway devono riprodurre.
+- Produces: i valori che il runbook del Task 6 e la dashboard Railway devono riprodurre.
 
 **Solo web e documentazione: non eseguire la suite api né il gate di root.**
 
@@ -571,7 +579,156 @@ EOF
 
 ---
 
-## Task 4: I due Dockerfile
+## Task 4: `NODE_ENV=production` nel build del web
+
+Il bundle di produzione spedisce oggi **React in modalità sviluppo**. Non è un rischio
+teorico: è misurato su questo repository il 2026-08-12, con gli stessi flag dello script
+`build` attuale.
+
+| Build | Peso | `Minified React error` (produzione) | `Each child in a list…` (sviluppo) |
+|---|---|---|---|
+| script `build` attuale | **1,2 M** | 0 | 1 |
+| `NODE_ENV=production` + gli stessi flag | **900 K** | 1 | 0 |
+| `--define process.env.NODE_ENV="production"` | **900 K** | 1 | 0 |
+
+Nel bundle attuale `process.env.NODE_ENV` non compare (0 occorrenze): il bundler di Bun la
+sostituisce comunque, e in assenza della variabile d'ambiente ci mette `"development"`. Il
+ramo di sviluppo di React resta quindi vivo — messaggi di invariant completi, controllo delle
+`key`, `Invalid hook call` — per **300 KB in più su ogni primo caricamento**, il 25% del
+bundle.
+
+**Files:**
+- Modify: `apps/web/package.json` (lo script `build`)
+- Modify: `apps/web/smoke.ts` (una asserzione, dopo la riga 35)
+
+**Interfaces:**
+- Consumes: niente.
+- Produces: uno script `build` che possiede la propria `NODE_ENV`. Il Dockerfile del web
+  (Task 5) si appoggia a questo e **non** deve dichiarare `ENV NODE_ENV=production`.
+
+**Perché nello script e non altrove.** Tre ragioni, tutte verificate:
+
+1. `smoke` gira sotto `bun run` (ambiente `NODE_ENV` **undefined**) ed `e2e` sotto `bun test`
+   (che Bun imposta a **`"test"`**). Un valore preso dall'ambiente sarebbe quindi sbagliato in
+   entrambi i casi; l'assegnazione inline nello script vince su tutto ed è l'unico punto
+   affidabile.
+2. Nel Dockerfile, la produzione costruirebbe un artefatto diverso da quello che `smoke`,
+   `preview`, `e2e` e la CI verificano — la classe di guasto esatta per cui il passo `smoke`
+   esiste.
+3. `bun run dev` non è toccato: il server di sviluppo continua a servire React in dev-mode,
+   che è quello che si vuole.
+
+Nessun rischio lato installazione: a differenza di npm, **`bun install` non salta le
+`devDependencies` con `NODE_ENV=production`** (verificato installando un pacchetto di prova).
+
+- [ ] **Step 1: Scrivere l'asserzione in `smoke.ts` (fallirà)**
+
+Inserire subito **dopo** la riga 35 (`const code = await Bun.file(…).text();`):
+
+```ts
+// 2. The bundle must carry React's PRODUCTION build. Bun's bundler substitutes
+// process.env.NODE_ENV at build time and falls back to "development" when the ambient
+// variable is unset, which leaves React's dev branch alive: ~300 KB of invariant messages,
+// key checks and hook-order checks shipped to every visitor, on a build that looks fine.
+// Assert the PRESENCE of the production marker rather than the absence of dev warnings:
+// production React replaces its messages with numeric codes, so the good bundle is the one
+// carrying the cryptic string. Should React ever rename it, this fails loudly — the safe
+// direction for a check whose whole job is to notice a silent downgrade.
+if (!code.includes('Minified React error'))
+  fail('bundle ships development React — the build script must set NODE_ENV=production');
+```
+
+Poi rinumerare il commento del controllo successivo, da `// 2. The bundle must boot without
+`process`.` a `// 3. The bundle must boot without `process`.`, e aggiornare la riga finale:
+
+```ts
+console.log('smoke: OK — assets absolute, React in production, boots and renders without `process`');
+```
+
+- [ ] **Step 2: Eseguire lo smoke per verificare che fallisca**
+
+```bash
+bun run --filter '@gc/web' smoke
+```
+
+Atteso: `smoke: FAIL — bundle ships development React …`, exit 1.
+
+- [ ] **Step 3: Correggere lo script `build`**
+
+In `apps/web/package.json`, lo script `build` diventa (una sola aggiunta, `NODE_ENV=production`
+davanti a `bun build`):
+
+```json
+"build": "rm -rf dist && NODE_ENV=production bun build ./index.html --outdir dist --minify --env 'PUBLIC_*' --public-path=/ && cp -R public/icons public/sw.js dist/",
+```
+
+`--env 'PUBLIC_*'` resta necessario e invariato: `NODE_ENV` non è una variabile `PUBLIC_*`, e
+il bundler la sostituisce per conto proprio — la build di confronto qui sopra lo dimostra,
+avendo prodotto il bundle di produzione con lo stesso `--env`.
+
+- [ ] **Step 4: Eseguire lo smoke per verificare che passi, e misurare**
+
+```bash
+bun run --filter '@gc/web' smoke
+du -h apps/web/dist/index-*.js
+```
+
+Atteso: `smoke: OK — assets absolute, React in production, boots and renders without
+`process``, e un bundle intorno ai **900 K** (era 1,2 M).
+
+- [ ] **Step 5: Verificare il mutante**
+
+Rimuovere temporaneamente `NODE_ENV=production` dallo script e rieseguire `smoke`.
+
+Atteso: torna a fallire. Se passa, l'asserzione non sta misurando nulla. Ripristinare.
+
+- [ ] **Step 6: Verificare che la suite web non regredisca**
+
+```bash
+bun run --filter '@gc/web' test
+bun run lint
+bun run typecheck
+```
+
+Atteso: **97 pass** (i 7 casi proxy del Task 1 sono già dentro), lint pulito, typecheck 3/3.
+
+I test unitari non toccano il bundle: girano sui sorgenti sotto happy-dom, quindi React resta
+in dev-mode lì e nulla cambia. L'`e2e`, invece, costruisce l'artefatto e da ora gira contro
+React di produzione — nessuna asserzione della suite dipende dai warning di sviluppo, e il
+gate completo del Task 7 lo conferma.
+
+- [ ] **Step 7: Commit**
+
+```bash
+git add apps/web/package.json apps/web/smoke.ts
+git commit -F - <<'EOF'
+fix(web): build di produzione con NODE_ENV=production
+
+Il bundler di Bun sostituisce process.env.NODE_ENV a build time e, se la
+variabile non e' definita nell'ambiente, ci mette "development": il
+bundle di produzione conteneva quindi il ramo di sviluppo di React, con i
+messaggi di invariant completi e i controlli delle key. 1,2 M -> 900 K,
+il 25% in meno su ogni primo caricamento.
+
+Assegnata nello script build e non nel Dockerfile: smoke gira sotto bun
+run (NODE_ENV undefined) ed e2e sotto bun test (che Bun imposta a
+"test"), quindi l'ambiente non e' affidabile, e un valore che vive solo
+nel Dockerfile farebbe verificare in locale un artefatto diverso da
+quello di produzione. bun run dev non e' toccato.
+
+smoke.ts asserisce la PRESENZA del marker di produzione invece
+dell'assenza dei warning: React di produzione sostituisce i messaggi con
+codici numerici, quindi il bundle buono e' quello con la stringa
+criptica. Il guasto era invisibile alla suite perche' un bundle in
+dev-mode si avvia perfettamente: e' piu' grande, non rotto.
+
+Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>
+EOF
+```
+
+---
+
+## Task 5: I due Dockerfile
 
 **Files:**
 - Create: `apps/api/Dockerfile`
@@ -580,7 +737,7 @@ EOF
 
 **Interfaces:**
 - Consumes: `API_INTERNAL_URL` letta da `serve.ts` (Task 1), il bind `::` (Task 2).
-- Produces: le immagini che il runbook del Task 5 configura via `RAILWAY_DOCKERFILE_PATH`.
+- Produces: le immagini che il runbook del Task 6 configura via `RAILWAY_DOCKERFILE_PATH`.
 
 **Perché Dockerfile e non configurazione di build.** La guida Bun di Railway dichiara che
 Railpack **non rileva** i progetti Bun e chiede un Dockerfile. Il pin
@@ -648,6 +805,10 @@ RUN bun install --frozen-lockfile
 # Railway exposes service variables to the build; ARG is what lets the RUN below read them.
 ARG PUBLIC_API_URL
 ARG PUBLIC_ENABLE_SW
+
+# No `ENV NODE_ENV=production` here on purpose: the build script owns it (Task 4), so local,
+# CI and production emit the identical artifact. Setting it here would make the one thing
+# smoke/preview/e2e verify differ from the one thing users get.
 RUN bun run --filter '@gc/web' build
 
 # serve.ts resolves dist/ relative to its own file, so the working directory does not matter.
@@ -715,15 +876,15 @@ EOF
 
 ---
 
-## Task 5: Runbook nel README e correzioni alla spec
+## Task 6: Runbook nel README e correzioni alla spec
 
 **Files:**
 - Modify: `README.md` (oggi 3 righe)
 - Modify: `docs/superpowers/specs/2026-08-11-phase6-cutover-design.md`
 
 **Interfaces:**
-- Consumes: i nomi delle variabili dei Task 1-4.
-- Produces: la documentazione operativa che il Task 6 esegue.
+- Consumes: i nomi delle variabili dei Task 1-5.
+- Produces: la documentazione operativa che il Task 7 esegue.
 
 - [ ] **Step 1: Applicare al file della spec le quattro correzioni**
 
@@ -754,7 +915,7 @@ Il README ha oggi 3 righe. Aggiungere una sezione `## Deploy (Railway)` che cont
 - la convivenza: `gc.utente` e `gc.token` sono condivisi, quindi un cambio password sullo
   stack nuovo disconnette la sessione legacy; i `JWT_SECRET` sono diversi per scelta;
 - la dismissione del legacy, per quando servirà;
-- il comando di riproduzione locale della topologia di produzione (Task 6, Step 1).
+- il comando di riproduzione locale della topologia di produzione (Task 7, Step 1).
 
 - [ ] **Step 3: Verificare i gate**
 
@@ -790,7 +951,7 @@ EOF
 
 ---
 
-## Task 6: Verifica della topologia di produzione, gate di chiusura, PR
+## Task 7: Verifica della topologia di produzione, gate di chiusura, PR
 
 **Files:** nessuno (verifica ed esecuzione).
 
@@ -847,15 +1008,19 @@ dell'api, che il dominio pubblico dell'api mantiene reale).
 
 - [ ] **Step 3: Push e apertura della PR**
 
+Il branch è già su origin con l'upstream configurato (spec `ff963d6` + piano `e91329d`),
+quindi basta:
+
 ```bash
-git push -u origin feat/phase6-cutover
+git push
 gh pr create --base master --title "Fase 6 — Cutover: deploy su Railway a origin singola" --body "..."
 ```
 
 Il corpo della PR deve contenere: il motivo della deviazione dal dominio custom (suffisso
-pubblico), l'elenco delle modifiche, il fatto che la CI **non** costruisce le immagini Docker
-(quindi la prima build reale è su Railway), e la checklist di verifica post-deploy della
-spec §9 come elenco di spunta per il revisore.
+pubblico), l'elenco delle modifiche, il guadagno del Task 4 (bundle 1,2 M → 900 K, React di
+produzione), il fatto che la CI **non** costruisce le immagini Docker (quindi la prima build
+reale è su Railway), e la checklist di verifica post-deploy della spec §9 come elenco di
+spunta per il revisore.
 
 - [ ] **Step 4: Attendere la CI verde e fermarsi**
 
@@ -866,19 +1031,26 @@ variabili, domini. Non tentare di automatizzarlo. Al verde della CI, riferire e 
 
 ## Self-Review
 
-**Copertura della spec.** §2 (motivazione) → Task 1 e 5. §3 topologia → Task 2 e 4. §4
+**Copertura della spec.** §2 (motivazione) → Task 1 e 6. §3 topologia → Task 2 e 5. §4
 proxy → Task 1. §5 modifiche al codice → Task 1, 2, 3 (con la correzione su `sw.js`). §6
-artefatti → Task 4. §7 variabili → Task 3 e 5. §8 test → Task 1 (con `e2e/proxy.test.ts`
-sostituito, motivato). §9 runbook e verifica → Task 5 e 6. §10 rischi → coperti dai passi di
-verifica corrispondenti. §12 definizione di completo → Task 6, tranne i punti 3 e 4 (deploy e
+artefatti → Task 5. §7 variabili → Task 3 e 6. §8 test → Task 1 (con `e2e/proxy.test.ts`
+sostituito, motivato). §9 runbook e verifica → Task 6 e 7. §10 rischi → coperti dai passi di
+verifica corrispondenti. §12 definizione di completo → Task 7, tranne i punti 3 e 4 (deploy e
 checklist su Railway), che richiedono le credenziali dell'utente e restano fuori dal branch.
+
+**Fuori spec, aggiunto su richiesta dell'utente.** Task 4 (`NODE_ENV=production` nel build):
+non discende da nessuna sezione della spec — è un guasto di produzione trovato il 2026-08-12
+mentre si rispondeva a una domanda, e l'utente ha chiesto di farlo entrare nella fase prima
+dei Dockerfile. Chiude anche, in parte, il debito «bundle 1,17 MB / nessun code splitting», il
+cui trigger dichiarato era proprio «misurare su rete reale alla Fase 6»: −25% senza toccare il
+code splitting.
 
 **Coerenza dei nomi.** `createHandler(distUrl, apiInternalUrl?)`, `API_PREFIX = '/api'`,
 `API_INTERNAL_URL`, `PUBLIC_API_URL`, `PUBLIC_ENABLE_SW`, `RAILWAY_DOCKERFILE_PATH`:
 identici in tutti i task, e coerenti con `apps/web/src/config.ts` (che non cambia).
 
-**Conteggi attesi.** Baseline misurata il 2026-08-12 su `feat/phase6-cutover` @ `ff963d6`:
+**Conteggi attesi.** Baseline misurata il 2026-08-12 su `feat/phase6-cutover` @ `e91329d`:
 web **90 pass / 22 file** (di cui 4 in `serve.test.ts`), api+shared **49 pass / 14 file**,
-e2e **17**. Dopo la Fase 6: web → **97** (7 casi proxy), api/shared e e2e invariati. Se la
-baseline non corrisponde all'inizio dell'esecuzione, `master` si è mosso: allineare il branch
-prima di iniziare, non adattare i numeri.
+e2e **17**, bundle **1,2 M**. Dopo la Fase 6: web → **97** (7 casi proxy), api/shared e e2e
+invariati, bundle → **900 K**. Se la baseline non corrisponde all'inizio dell'esecuzione,
+`master` si è mosso: allineare il branch prima di iniziare, non adattare i numeri.
