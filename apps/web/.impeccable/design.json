@@ -1,0 +1,140 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-09-08T00:00:00Z",
+  "title": "Design System: Gestione Casa",
+  "extensions": {
+    "colorMeta": {
+      "mint-teal": {
+        "role": "primary",
+        "displayName": "Mint Teal",
+        "canonical": "#78c2ad",
+        "tonalRamp": ["#000000", "#223731", "#456f63", "#67a694", "#8bcbb9", "#b2dcd0", "#d8eee8", "#ffffff"]
+      },
+      "coral-blush": {
+        "role": "secondary",
+        "displayName": "Coral Blush",
+        "canonical": "#f3969a",
+        "tonalRamp": ["#000000", "#452b2c", "#8b5658", "#d08184", "#f5a5a8", "#f8c3c5", "#fce1e2", "#ffffff"]
+      },
+      "success-green": {
+        "role": "semantic-success",
+        "displayName": "Success Green",
+        "canonical": "#56cc9d",
+        "tonalRamp": ["#000000", "#193a2d", "#31755a", "#4aaf87", "#6ed3ab", "#9ee2c7", "#cff0e3", "#ffffff"]
+      },
+      "info-cyan": {
+        "role": "semantic-info",
+        "displayName": "Info Cyan",
+        "canonical": "#6cc3d5",
+        "tonalRamp": ["#000000", "#1f383d", "#3e6f7a", "#5da7b7", "#81ccdb", "#abdde7", "#d5eef3", "#ffffff"]
+      },
+      "warning-yellow": {
+        "role": "semantic-warning",
+        "displayName": "Warning Yellow",
+        "canonical": "#ffce67",
+        "tonalRamp": ["#000000", "#493b1d", "#92763b", "#dbb158", "#ffd57d", "#ffe3a8", "#fff1d4", "#ffffff"]
+      },
+      "danger-coral": {
+        "role": "semantic-danger",
+        "displayName": "Danger Coral-Red",
+        "canonical": "#ff7851",
+        "tonalRamp": ["#000000", "#492217", "#92452e", "#db6745", "#ff8b6a", "#ffb29c", "#ffd8cd", "#ffffff"]
+      },
+      "neutral-light": { "role": "neutral", "displayName": "Neutral Light", "canonical": "#f8f9fa" },
+      "neutral-dark": { "role": "neutral", "displayName": "Neutral Dark", "canonical": "#343a40" },
+      "body-text": { "role": "neutral", "displayName": "Body Text Gray", "canonical": "#888888" },
+      "heading-text": { "role": "neutral", "displayName": "Heading Text Gray", "canonical": "#5a5a5a" }
+    },
+    "typographyMeta": {
+      "headline": { "displayName": "Headline", "purpose": "Rare page-level headings, e.g. the error page." },
+      "title": { "displayName": "Title", "purpose": "Section headers: statistics table titles, modal titles." },
+      "body": { "displayName": "Body", "purpose": "Table data, list content, form values, toast copy." },
+      "label": { "displayName": "Label", "purpose": "Form labels, button text, nav links, breadcrumbs." }
+    },
+    "dataVizPalettes": {
+      "solar": {
+        "purpose": "Sequential heat scale for monthly expense bars, ported verbatim from the legacy ngx-charts implementation.",
+        "colors": ["#fff8e1", "#ffecb3", "#ffe082", "#ffd54f", "#ffca28", "#ffc107", "#ffb300", "#ffa000", "#ff8f00", "#ff6f00"]
+      },
+      "natural": {
+        "purpose": "Cycling categorical palette for pie-chart slices, ported verbatim from the legacy ngx-charts implementation.",
+        "colors": ["#bf9d76", "#e99450", "#d89f59", "#f2dfa7", "#a5d7c6", "#7794b1", "#afafaf", "#707160", "#ba9383", "#d9d5c3"]
+      }
+    },
+    "breakpoints": [
+      { "name": "sm", "value": "576px" },
+      { "name": "md", "value": "768px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The one call-to-action color — create/save/apply actions.",
+      "html": "<button class=\"ds-btn-primary\">Salva</button>",
+      "css": ".ds-btn-primary { font-family: Montserrat, -apple-system, system-ui, sans-serif; font-weight: 500; background: #78c2ad; color: #fff; padding: 0.375rem 0.75rem; border: 1px solid #78c2ad; border-radius: 0.4rem; transition: background-color 0.15s ease-in-out, border-color 0.15s ease-in-out; } .ds-btn-primary:hover { background: #66a593; border-color: #609b8a; } .ds-btn-primary:focus-visible { outline: none; box-shadow: 0 0 0 0.25rem rgba(140, 203, 185, 0.5); } .ds-btn-primary:active { background: #609b8a; border-color: #5a9282; }"
+    },
+    {
+      "name": "Row Action Buttons",
+      "kind": "button",
+      "refersTo": "button-danger",
+      "description": "Icon-only row actions colored by verb: warning=edit, success=duplicate, danger=delete (The Action-Color Rule).",
+      "html": "<div class=\"ds-row-actions\"><button class=\"ds-btn-warning\" title=\"Modifica\" aria-label=\"Modifica\">✎</button><button class=\"ds-btn-success\" title=\"Clona\" aria-label=\"Clona\">⧉</button><button class=\"ds-btn-danger\" title=\"Elimina\" aria-label=\"Elimina\">🗑</button></div>",
+      "css": ".ds-row-actions { display: flex; gap: 0.5rem; } .ds-row-actions button { color: #fff; border: 1px solid transparent; border-radius: 0.4rem; padding: 0.25rem 0.5rem; font-size: 0.875rem; cursor: pointer; } .ds-btn-warning { background: #ffce67; } .ds-btn-warning:hover { background: #ffc341; } .ds-btn-success { background: #56cc9d; } .ds-btn-success:hover { background: #3dc28e; } .ds-btn-danger { background: #ff7851; } .ds-btn-danger:hover { background: #ff5c2e; } .ds-row-actions button:focus-visible { outline: none; box-shadow: 0 0 0 0.2rem rgba(0,0,0,0.15); }"
+    },
+    {
+      "name": "Text Input",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Standard form field — plain Bootstrap form-control.",
+      "html": "<div class=\"ds-field\"><label for=\"ds-demo-input\">Descrizione</label><input id=\"ds-demo-input\" type=\"text\" placeholder=\"Descrizione\" /></div>",
+      "css": ".ds-field { display: flex; flex-direction: column; gap: 0.25rem; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; } .ds-field label { font-family: Montserrat, -apple-system, system-ui, sans-serif; font-weight: 500; color: #5a5a5a; font-size: 0.9rem; } .ds-field input { border: 1px solid #ced4da; border-radius: 0.4rem; padding: 0.375rem 0.75rem; color: #888; font-size: 1rem; } .ds-field input:focus-visible { outline: none; border-color: #a8d5c8; box-shadow: 0 0 0 0.25rem rgba(120, 194, 173, 0.25); }"
+    },
+    {
+      "name": "Navbar",
+      "kind": "nav",
+      "refersTo": "button-outline-light",
+      "description": "Fixed-top mint navbar with a house-glyph brand mark and outline-light utility buttons.",
+      "html": "<nav class=\"ds-navbar\"><span class=\"ds-navbar-brand\">🏠</span><button class=\"ds-navbar-btn\">Profilo Utente</button><button class=\"ds-navbar-btn\">Logout</button></nav>",
+      "css": ".ds-navbar { display: flex; align-items: center; gap: 0.75rem; background: #78c2ad; padding: 0.5rem 1rem; font-family: Montserrat, -apple-system, system-ui, sans-serif; } .ds-navbar-brand { font-size: 1.5rem; color: #fff; margin-right: auto; } .ds-navbar-btn { background: transparent; color: #fff; border: 1px solid #fff; border-radius: 0.4rem; padding: 0.25rem 0.5rem; font-family: inherit; font-weight: 500; font-size: 0.875rem; cursor: pointer; } .ds-navbar-btn:hover { background: rgba(255,255,255,0.15); }"
+    },
+    {
+      "name": "Hoverable Table",
+      "kind": "custom",
+      "refersTo": "table",
+      "description": "Flat, hairline-bordered data table with row hover, no zebra striping, no shadow.",
+      "html": "<table class=\"ds-table\"><thead><tr><th>Giorno</th><th>Descrizione</th><th>Costo</th></tr></thead><tbody><tr><td>01/09</td><td>Spesa</td><td>42,50 €</td></tr><tr><td>03/09</td><td>Carburante</td><td>60,00 €</td></tr></tbody></table>",
+      "css": ".ds-table { width: 100%; border-collapse: collapse; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #888; } .ds-table th { font-family: Montserrat, -apple-system, system-ui, sans-serif; font-weight: 500; color: #5a5a5a; text-align: left; border-bottom: 2px solid rgba(0,0,0,0.08); padding: 0.5rem 0.75rem; } .ds-table td { border-bottom: 1px solid rgba(0,0,0,0.05); padding: 0.5rem 0.75rem; } .ds-table tbody tr:hover { background: rgba(0,0,0,0.04); }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Off-the-Shelf Utility",
+    "overview": "Gestione Casa is a private tool for one household, not a product being sold to anyone — so it spends zero effort disguising that it runs an unmodified Bootswatch theme (\"Minty\") on top of Bootstrap 5.3. There is no logo beyond a house glyph, no custom type ramp, no bespoke component library. The one deliberate choice was which stock theme to reach for: Minty's mint-teal-and-coral-blush palette and generously rounded corners already read as soft and approachable without anyone drawing a single custom shape. The system's honesty is the point — it looks exactly as designed as it is, which is: not much, on purpose. Surfaces are flat, spacing follows Bootstrap's default scale untouched, and the only custom CSS in the whole app is a handful of overrides for things Bootstrap doesn't ship natively. Light/dark mode is Bootstrap 5.3's built-in data-bs-theme color-mode switch, not a hand-tuned dark palette.",
+    "keyCharacteristics": [
+      "Stock Bootstrap 5.3 + Bootswatch \"Minty\" theme, unmodified beyond a few structural CSS overrides.",
+      "Mint teal primary, coral blush secondary — soft and approachable by virtue of the theme choice, not custom design work.",
+      "Flat throughout: no shadows, no elevation system, no glassmorphism.",
+      "Montserrat for headings/buttons/nav/legends; the system's default sans-serif stack for body text and form values.",
+      "Light/dark handled entirely by Bootstrap's native color-mode attribute."
+    ],
+    "rules": [
+      { "name": "The Action-Color Rule", "body": "Row-level actions are colored by verb, not by position or emphasis: primary (mint) creates, warning (yellow) edits, success (green) duplicates, danger (coral-red) deletes.", "section": "colors" },
+      { "name": "The Two-Font Rule", "body": "Exactly two type roles exist: Montserrat for structure (headings, nav, buttons, legends) and system-sans for content (everything a user reads as data or types as input).", "section": "typography" },
+      { "name": "The No-Shadow Rule", "body": "Don't add box-shadow for decoration or hierarchy. If two surfaces need to read as separate, use a border or a background-color/spacing gap.", "section": "elevation" }
+    ],
+    "dos": [
+      "Do reuse Minty's semantic colors (primary/secondary/success/warning/danger/info) for any new UI — never introduce a new brand hex.",
+      "Do color row/inline actions by what they do, per the Action-Color Rule.",
+      "Do keep body and table text on the system sans-serif stack; reserve Montserrat for headings, buttons, nav, and legends.",
+      "Do label every icon-only button with title + aria-label.",
+      "Do confirm every mutation with a sonner toast in the matching semantic color."
+    ],
+    "donts": [
+      "Don't add box-shadow, glassmorphism, or gradients anywhere.",
+      "Don't wrap new content in Bootstrap .card — this app has never used cards.",
+      "Don't hand-tune the dark theme — light/dark is Bootstrap's native data-bs-theme switch.",
+      "Don't let the PWA manifest's theme_color/background_color drift further from the actual Bootstrap primary."
+    ]
+  }
+}
