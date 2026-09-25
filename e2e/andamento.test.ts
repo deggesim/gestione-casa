@@ -3,7 +3,7 @@ import { clickText, ensureLoggedIn, fill, reseed, view, waitFor } from './harnes
 
 const DESCRIZIONE = 'voce creata dal test e2e';
 const MODIFICATA = 'voce modificata dal test e2e';
-const COSTO = '42.5';
+const COSTO = '42,5';
 
 const tableReady = () =>
   waitFor('the andamento table', `document.querySelector('table[aria-label=andamento]') && 'ok'`);

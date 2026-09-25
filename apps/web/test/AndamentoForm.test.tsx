@@ -22,7 +22,7 @@ test('Salva is disabled until every required field is valid', async () => {
   expect(salva().disabled).toBe(true);
 
   fireEvent.change(screen.getByLabelText(/descrizione/i), { target: { value: 'pane' } });
-  fireEvent.change(screen.getByLabelText(/costo/i), { target: { value: '3.5' } });
+  fireEvent.change(screen.getByLabelText(/costo/i), { target: { value: '3,5' } });
   fireEvent.change(screen.getByLabelText(/tipo spesa/i), { target: { value: '1' } });
   // giorno is pre-filled by emptyForm(); all required fields now set
   await waitFor(() => expect(salva().disabled).toBe(false));
@@ -59,7 +59,7 @@ test('whitespace-only descrizione keeps Salva enabled (gate matches RHF required
     />,
   );
   fireEvent.change(screen.getByLabelText(/tipo spesa/i), { target: { value: '1' } });
-  fireEvent.change(screen.getByLabelText(/costo/i), { target: { value: '3.5' } });
+  fireEvent.change(screen.getByLabelText(/costo/i), { target: { value: '3,5' } });
   fireEvent.change(screen.getByLabelText(/descrizione/i), { target: { value: ' ' } });
   // giorno is pre-filled by emptyForm(); RHF's `required` accepts ' ', so the gate must too
   const salva = () => screen.getByRole('button', { name: 'Salva' }) as HTMLButtonElement;

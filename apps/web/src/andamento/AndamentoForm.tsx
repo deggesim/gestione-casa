@@ -1,4 +1,5 @@
 import { Controller, useForm, useWatch } from 'react-hook-form';
+import { CurrencyInput } from 'react-currency-input-field';
 import type { AndamentoInput, TipoSpesa } from '@gc/shared-types';
 import type { FormValues } from './prefills';
 
@@ -121,17 +122,30 @@ export const AndamentoForm = ({
           <label htmlFor="costo" className="form-label">
             Costo *
           </label>
-          <input
-            id="costo"
-            type="number"
-            step="0.01"
-            min="0.01"
-            className={`form-control${errors.costo ? ' is-invalid' : ''}`}
-            {...register('costo', {
+          <Controller
+            name="costo"
+            control={control}
+            rules={{
               required: 'Il campo costo è obbligatorio',
               min: { value: 0.01, message: 'Il campo costo deve essere maggiore di zero' },
-              valueAsNumber: true,
-            })}
+            }}
+            render={({ field }) => (
+              // it-IT/EUR puts the symbol after the number with comma decimals/dot
+              // thousands, so intlConfig alone gives the Italian format without
+              // hardcoding separators.
+              <CurrencyInput
+                id="costo"
+                name={field.name}
+                ref={field.ref}
+                className={`form-control${errors.costo ? ' is-invalid' : ''}`}
+                intlConfig={{ locale: 'it-IT', currency: 'EUR' }}
+                decimalsLimit={2}
+                allowNegativeValue={false}
+                value={field.value}
+                onBlur={field.onBlur}
+                onValueChange={(_value, _name, values) => field.onChange(values?.float ?? '')}
+              />
+            )}
           />
           {errors.costo && <div className="invalid-feedback">{errors.costo.message}</div>}
         </div>
