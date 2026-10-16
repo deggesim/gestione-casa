@@ -1,7 +1,7 @@
-import { desc, eq } from 'drizzle-orm';
+import { asc, count, desc, eq, ilike, or } from 'drizzle-orm';
 import type { db as Db } from '../db/client';
 import { andamento, tipoSpesa } from '../db/schema';
-import type { Andamento, AndamentoInput } from '@gc/shared-types';
+import type { Andamento, AndamentoInput, AndamentoPage } from '@gc/shared-types';
 
 // Normalize a PG `date` to the "YYYY-MM-DD" wire form. bun-sql hands it back as a JS Date
 // or a string — and under `bun --watch` as a full ISO timestamp, because `instanceof Date`
@@ -39,9 +39,47 @@ const baseSelect = (db: typeof Db) =>
     .from(andamento)
     .innerJoin(tipoSpesa, eq(andamento.tipoSpesaId, tipoSpesa.id));
 
+export type PageParams = {
+  page: number;
+  pageSize: number;
+  q?: string;
+  sort: 'giorno' | 'descrizione' | 'costo';
+  dir: 'asc' | 'desc';
+};
+
+const SORT_COLUMNS = {
+  giorno: andamento.giorno,
+  descrizione: andamento.descrizione,
+  costo: andamento.costo,
+} as const;
+
+// Legacy parity: the filter only kicks in past 2 chars and matches descrizione OR the
+// category name. `%` and `_` are escaped so the user's text is matched literally.
+const filterWhere = (q?: string) => {
+  if (!q || q.length <= 2) return undefined;
+  const pattern = `%${q.replace(/[\\%_]/g, '\\$&')}%`;
+  return or(ilike(andamento.descrizione, pattern), ilike(tipoSpesa.descrizione, pattern));
+};
+
 export const createAndamentoRepository = (db: typeof Db) => ({
-  findAll: async (): Promise<Andamento[]> =>
-    (await baseSelect(db).orderBy(desc(andamento.giorno))).map(toAndamento),
+  findPage: async ({ page, pageSize, q, sort, dir }: PageParams): Promise<AndamentoPage> => {
+    const where = filterWhere(q);
+    const totalRows = await db
+      .select({ total: count() })
+      .from(andamento)
+      .innerJoin(tipoSpesa, eq(andamento.tipoSpesaId, tipoSpesa.id))
+      .where(where);
+    const total = totalRows[0]!.total; // an aggregate without GROUP BY always yields one row
+    const current = Math.min(page, Math.max(1, Math.ceil(total / pageSize)));
+    // `id desc` as the final key makes the order total: without it, rows sharing a
+    // giorno can swap places between two requests and show up on two pages (or none).
+    const rows = await baseSelect(db)
+      .where(where)
+      .orderBy((dir === 'asc' ? asc : desc)(SORT_COLUMNS[sort]), desc(andamento.id))
+      .limit(pageSize)
+      .offset((current - 1) * pageSize);
+    return { items: rows.map(toAndamento), total, page: current, pageSize };
+  },
   findById: async (id: number): Promise<Andamento | null> => {
     const rows = await baseSelect(db).where(eq(andamento.id, id));
     return rows[0] ? toAndamento(rows[0]) : null;

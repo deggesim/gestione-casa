@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Modal, Pagination } from 'react-bootstrap';
 import { toast } from 'sonner';
 import {
@@ -32,48 +32,74 @@ import {
   type FormValues,
 } from './prefills';
 import {
-  filterAndamenti,
   formatCosto,
   formatGiorno,
   pageWindow,
-  sortAndamenti,
+  type ListSearch,
   type SortDir,
   type SortKey,
 } from './list-utils';
 
 const PAGE_SIZE = 10;
+const FILTER_DEBOUNCE_MS = 300;
+
+// The view state (page, filter, sort) lives in the URL: the parent passes it in and
+// applies patches, so links are shareable and Back steps through pages.
+type Props = {
+  search: ListSearch;
+  onSearchChange: (patch: Partial<ListSearch>, opts?: { replace?: boolean }) => void;
+};
 
 type Editing = { titolo: string; initial: FormValues } | null;
 
-export const AndamentoList = () => {
-  const { data } = useAndamentoList();
+export const AndamentoList = ({ search, onSearchChange }: Props) => {
+  const { data, isPlaceholderData } = useAndamentoList({ ...search, pageSize: PAGE_SIZE });
   const { data: tipiSpesa } = useTipoSpesaList();
   const save = useSaveAndamento();
   const remove = useDeleteAndamento();
-  const lista = data ?? [];
+  const pageRows = data?.items ?? [];
+  const total = data?.total ?? 0;
+  const pageCount = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const current = data?.page ?? search.page;
 
-  const [filtro, setFiltro] = useState('');
-  const [sortKey, setSortKey] = useState<SortKey | null>(null);
-  const [sortDir, setSortDir] = useState<SortDir>('asc');
-  const [page, setPage] = useState(1);
+  const [filtro, setFiltro] = useState(search.q);
   const [editing, setEditing] = useState<Editing>(null);
   const [toDelete, setToDelete] = useState<Andamento | null>(null);
 
-  const filtered = useMemo(() => filterAndamenti(lista, filtro), [lista, filtro]);
-  const sorted = useMemo(
-    () => (sortKey ? sortAndamenti(filtered, sortKey, sortDir) : filtered),
-    [filtered, sortKey, sortDir],
-  );
-  const pageCount = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE));
-  const current = Math.min(page, pageCount);
-  const pageRows = sorted.slice((current - 1) * PAGE_SIZE, current * PAGE_SIZE);
+  // The q this component last wrote to the URL. It tells "the URL caught up with what I
+  // typed" (ignore) from "the URL changed under me, e.g. Back" (adopt): without it, a
+  // late URL update would overwrite whatever the user typed in the meantime.
+  const pushedQ = useRef(search.q);
+  useEffect(() => {
+    if (search.q === pushedQ.current) return;
+    pushedQ.current = search.q;
+    setFiltro(search.q);
+  }, [search.q]);
+  useEffect(() => {
+    if (filtro === pushedQ.current) return;
+    const t = setTimeout(() => {
+      pushedQ.current = filtro;
+      onSearchChange({ q: filtro, page: 1 }, { replace: true }); // replace: one entry per search, not per keystroke
+    }, FILTER_DEBOUNCE_MS);
+    return () => clearTimeout(t);
+  }, [filtro, onSearchChange]);
 
-  const sortBy = (key: SortKey, dir: SortDir) => {
-    setSortKey(key);
-    setSortDir(dir);
-    setPage(1);
+  // The server clamps a page past the end (last row of the last page deleted, hand-edited
+  // link): write the page it really served back to the URL. Placeholder data is the
+  // PREVIOUS page, so its `page` says nothing about the one being fetched.
+  useEffect(() => {
+    if (data && !isPlaceholderData && data.page !== search.page)
+      onSearchChange({ page: data.page }, { replace: true });
+  }, [data, isPlaceholderData, search.page, onSearchChange]);
+
+  const clearFiltro = () => {
+    pushedQ.current = '';
+    setFiltro('');
+    onSearchChange({ q: '', page: 1 });
   };
-  const active = (key: SortKey, dir: SortDir) => sortKey === key && sortDir === dir;
+  const goTo = (page: number) => onSearchChange({ page });
+  const sortBy = (key: SortKey, dir: SortDir) => onSearchChange({ sort: key, dir, page: 1 });
+  const active = (key: SortKey, dir: SortDir) => search.sort === key && search.dir === dir;
   const sortIcons = (key: SortKey) => (
     <span className="ms-1">
       <span
@@ -127,19 +153,13 @@ export const AndamentoList = () => {
             className="form-control"
             placeholder="Filtro"
             value={filtro}
-            onChange={(e) => {
-              setFiltro(e.target.value);
-              setPage(1);
-            }}
+            onChange={(e) => setFiltro(e.target.value)}
           />
           <button
             type="button"
             className="btn btn-outline-secondary"
             aria-label="Pulisci filtro"
-            onClick={() => {
-              setFiltro('');
-              setPage(1);
-            }}
+            onClick={clearFiltro}
           >
             <FaXmark />
           </button>
@@ -254,17 +274,17 @@ export const AndamentoList = () => {
         </table>
       </div>
 
-      {sorted.length > PAGE_SIZE && (
+      {total > PAGE_SIZE && (
         <Pagination className="justify-content-center" aria-label="Paginazione">
-          <Pagination.First disabled={current === 1} onClick={() => setPage(1)} />
-          <Pagination.Prev disabled={current === 1} onClick={() => setPage(current - 1)} />
+          <Pagination.First disabled={current === 1} onClick={() => goTo(1)} />
+          <Pagination.Prev disabled={current === 1} onClick={() => goTo(current - 1)} />
           {pageWindow(current, pageCount).map((p) => (
-            <Pagination.Item key={p} active={p === current} onClick={() => setPage(p)}>
+            <Pagination.Item key={p} active={p === current} onClick={() => goTo(p)}>
               {p}
             </Pagination.Item>
           ))}
-          <Pagination.Next disabled={current === pageCount} onClick={() => setPage(current + 1)} />
-          <Pagination.Last disabled={current === pageCount} onClick={() => setPage(pageCount)} />
+          <Pagination.Next disabled={current === pageCount} onClick={() => goTo(current + 1)} />
+          <Pagination.Last disabled={current === pageCount} onClick={() => goTo(pageCount)} />
         </Pagination>
       )}
 

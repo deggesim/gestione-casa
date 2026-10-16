@@ -4,6 +4,7 @@ import type { Crumb } from '../layout/breadcrumbs';
 import { Layout } from '../layout/Layout';
 import { LoginForm } from '../login/LoginForm';
 import { HomePage } from './home.route';
+import { parseListSearch } from '../andamento/list-utils';
 import { requireAuth } from '../auth/require-auth';
 import { SpeseMedie } from '../statistiche/SpeseMedie';
 import { BarreStatistica } from '../statistiche/BarreStatistica';
@@ -33,6 +34,7 @@ export const buildRouter = (queryClient: QueryClient) => {
   const homeRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: '/home',
+    validateSearch: parseListSearch,
     beforeLoad: requireAuth(queryClient),
     component: HomePage,
     staticData: { crumbs: [{ label: 'Home' }] },

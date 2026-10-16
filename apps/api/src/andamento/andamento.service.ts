@@ -1,9 +1,10 @@
 import { BadRequestError, NotFoundError } from '../errors';
-import type { AndamentoInput } from '@gc/shared-types';
+import type { AndamentoInput, AndamentoQuery } from '@gc/shared-types';
 import type { createAndamentoRepository } from './andamento.repository';
 
 export const createAndamentoService = (repo: ReturnType<typeof createAndamentoRepository>) => ({
-  findAll: () => repo.findAll(),
+  findPage: ({ page = 1, pageSize = 10, q, sort = 'giorno', dir = 'desc' }: AndamentoQuery) =>
+    repo.findPage({ page, pageSize, q, sort, dir }),
   findById: async (id: number) => {
     const found = await repo.findById(id);
     if (!found) throw new NotFoundError(`Andamento ${id} not found`);

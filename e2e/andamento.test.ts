@@ -1,5 +1,5 @@
 import { beforeAll, afterAll, test, expect } from 'bun:test';
-import { clickText, ensureLoggedIn, fill, reseed, view, waitFor } from './harness';
+import { clickText, ensureLoggedIn, fill, reseed, view, waitFor, WEB_URL } from './harness';
 
 const DESCRIZIONE = 'voce creata dal test e2e';
 const MODIFICATA = 'voce modificata dal test e2e';
@@ -16,8 +16,8 @@ const modalClosed = () =>
 
 // Filtering keeps the assertions independent of pagination: the table paginates past 10
 // rows and the seed already has 11, so a new row would land on page two. The threshold is
-// 2 characters (filterAndamenti in apps/web/src/andamento/list-utils.ts), which every
-// search string here clears.
+// 2 characters (filterWhere in apps/api/src/andamento/andamento.repository.ts), which
+// every search string here clears. The filter is debounced, hence the polling rowCountIs.
 const filterBy = async (text: string) => {
   await tableReady();
   await fill('input[placeholder="Filtro"]', text);
@@ -109,4 +109,30 @@ test('deleting a row asks for confirmation and removes it', async () => {
   await view.reload();
   await filterBy(MODIFICATA);
   expect(await visibleDescriptions()).toEqual([]);
+});
+
+// The seed holds 11 rows (page size 10), so there are exactly two pages. Page, filter and
+// sort live in the URL: only a real browser proves that Back steps through pages and that
+// a reload (== opening a shared link) lands on the same view.
+const search = () => view.evaluate('location.search') as Promise<string>;
+
+test('the page lives in the URL: reload keeps it and Back returns to page one', async () => {
+  await view.navigate(`${WEB_URL}/home`);
+  await tableReady();
+  await rowCountIs(10);
+
+  // The paginator sits below the 10-row table, under the 800px fold; click() needs it visible.
+  await view.evaluate(`document.querySelector('.pagination').scrollIntoView()`);
+  await clickText('.pagination .page-link', '2');
+  await waitFor('page=2 in the URL', `location.search.includes('page=2') ? 'ok' : false`);
+  await rowCountIs(1);
+
+  await view.reload(); // same as opening the shared link
+  await tableReady();
+  await rowCountIs(1);
+  expect(await search()).toContain('page=2');
+
+  await view.evaluate('history.back()');
+  await rowCountIs(10);
+  expect(await search()).not.toContain('page=');
 });

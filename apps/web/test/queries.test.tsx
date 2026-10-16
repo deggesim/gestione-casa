@@ -3,7 +3,11 @@ import { renderHook, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
 
-const get = mock(async () => ({ data: [{ id: 1 }], error: null }));
+const pageOf = (items: unknown[], page = 1) => ({
+  data: { items, total: 25, page, pageSize: 10 },
+  error: null,
+});
+const get = mock(async (_opts?: unknown) => pageOf([{ id: 1 }]));
 const post = mock(async () => ({ data: { id: 9 }, error: null }));
 const put = mock(async () => ({ data: { id: 5 }, error: null }));
 const del = mock(async () => ({ data: { deleted: 1 }, error: null }));
@@ -40,12 +44,51 @@ const wrapper =
 
 const freshQc = () => new QueryClient({ defaultOptions: { queries: { retry: false } } });
 
-test('useAndamentoList fetches GET /andamento', async () => {
+const params = { page: 2, pageSize: 10, q: '', sort: 'costo', dir: 'asc' } as const;
+
+test('useAndamentoList sends the page params as the query, omitting an empty q', async () => {
+  get.mockClear();
   const { useAndamentoList } = await import('../src/andamento/queries');
-  const { result } = renderHook(() => useAndamentoList(), { wrapper: wrapper(freshQc()) });
-  // Cast: `data`'s static type is the real `Andamento[]` (from queries.ts's import),
+  const { result } = renderHook(() => useAndamentoList(params), { wrapper: wrapper(freshQc()) });
+  // Cast: `data`'s static type is the real `AndamentoPage` (from queries.ts's import),
   // unaffected by the mocked runtime shape — the fixture only needs the `id` field.
-  await waitFor(() => expect(result.current.data as unknown).toEqual([{ id: 1 }]));
+  await waitFor(() => expect(result.current.data as unknown).toMatchObject({ items: [{ id: 1 }] }));
+  expect(get).toHaveBeenCalledWith({
+    query: { page: 2, pageSize: 10, sort: 'costo', dir: 'asc' },
+  });
+});
+
+test('useAndamentoList sends q once it is set', async () => {
+  get.mockClear();
+  const { useAndamentoList } = await import('../src/andamento/queries');
+  renderHook(() => useAndamentoList({ ...params, q: 'pane' }), { wrapper: wrapper(freshQc()) });
+  await waitFor(() => expect(get).toHaveBeenCalledTimes(1));
+  expect(get).toHaveBeenCalledWith({
+    query: { page: 2, pageSize: 10, q: 'pane', sort: 'costo', dir: 'asc' },
+  });
+});
+
+test('useAndamentoList keeps the previous page on screen while the next one loads', async () => {
+  const { useAndamentoList } = await import('../src/andamento/queries');
+  let release = () => {};
+  get.mockImplementation(async (opts) =>
+    (opts as { query: { page: number } }).query.page === 1
+      ? pageOf([{ id: 1 }], 1)
+      : new Promise((r) => (release = () => r(pageOf([{ id: 11 }], 2)))),
+  );
+  const { result, rerender } = renderHook(({ p }) => useAndamentoList({ ...params, page: p }), {
+    wrapper: wrapper(freshQc()),
+    initialProps: { p: 1 },
+  });
+  await waitFor(() => expect(result.current.data?.items.length).toBe(1));
+
+  rerender({ p: 2 });
+  await waitFor(() => expect(result.current.isPlaceholderData).toBe(true));
+  expect(result.current.data?.page).toBe(1); // still the old page, not undefined
+
+  release();
+  await waitFor(() => expect(result.current.data?.page).toBe(2));
+  get.mockImplementation(async () => pageOf([{ id: 1 }]));
 });
 
 test('useSaveAndamento POSTs when id is absent, PUTs when present', async () => {
