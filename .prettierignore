@@ -4,3 +4,4 @@ bun.lock
 docs
 .superpowers
 *.md
+apps/web/.impeccable
