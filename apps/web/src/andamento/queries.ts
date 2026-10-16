@@ -1,15 +1,25 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { AndamentoInput } from '@gc/shared-types';
 import { apiClient } from '../api/client';
+import type { ListSearch } from './list-utils';
 
-export const useAndamentoList = () =>
+export type ListParams = ListSearch & { pageSize: number };
+
+// The key carries the params, so every page/filter/sort is its own cache entry; the
+// mutations below invalidate by the bare ['andamento'] prefix and so refresh all of them.
+// keepPreviousData holds the old page on screen while the next one loads (no blank table).
+export const useAndamentoList = (params: ListParams) =>
   useQuery({
-    queryKey: ['andamento'],
+    queryKey: ['andamento', params],
     queryFn: async () => {
-      const { data, error } = await apiClient.andamento.get();
+      const { q, ...rest } = params;
+      const { data, error } = await apiClient.andamento.get({
+        query: q ? { ...rest, q } : rest,
+      });
       if (error) throw error;
       return data;
     },
+    placeholderData: keepPreviousData,
   });
 
 export const useTipoSpesaList = () =>

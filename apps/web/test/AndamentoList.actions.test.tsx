@@ -2,6 +2,7 @@ import { test, expect, mock } from 'bun:test';
 import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
+import { DEFAULT_SEARCH } from '../src/andamento/list-utils';
 
 const rows = [
   {
@@ -18,7 +19,10 @@ const byId = mock((_a: { id: number }) => ({
   put: async () => ({ data: rows[0], error: null }),
   delete: del,
 }));
-const andamento = Object.assign(byId, { get: async () => ({ data: rows, error: null }), post });
+const andamento = Object.assign(byId, {
+  get: async () => ({ data: { items: rows, total: 1, page: 1, pageSize: 10 }, error: null }),
+  post,
+});
 
 mock.module('../src/api/client', () => ({
   apiClient: {
@@ -45,7 +49,7 @@ const renderList = async () => {
   const wrapper = ({ children }: { children: ReactNode }) => (
     <QueryClientProvider client={qc}>{children}</QueryClientProvider>
   );
-  render(<AndamentoList />, { wrapper });
+  render(<AndamentoList search={DEFAULT_SEARCH} onSearchChange={() => {}} />, { wrapper });
   await waitFor(() => expect(screen.getByText('spesa gen')).toBeDefined());
 };
 
